@@ -13,8 +13,8 @@ set.seed(1234)
 library(dplyr)
 
 # Read the data
-setwd("/Users/aubrey/Documents/GitHub/Master-s_Thesis")
-scenario_df <- read.csv("datasets/text_data/scenario_df.csv")
+# setwd("datasets/text_data/Synthetics/scenario_df.csv")
+scenario_df <- read.csv("datasets/text_data/Synthetics/scenario_df.csv")
 
 # Defining output directory, input window size, forecasting horizon, and seasonality respectively.
 OUTPUT_DIR = "./datasets/text_data/Synthetics/moving_window/"
@@ -66,7 +66,8 @@ for (length in time_series_lengths) {
 
                 # mean-scale normalization
                 # The division instead of subtraction further helps to scale all the time series to a similar range which helps the RNN learning process.
-                data_train_i <- data_train_i / mean(data_train_i)
+                time_series_mean <- mean(data_train_i)
+                data_train_i <- data_train_i / time_series_mean
 
                 # log transformation
                 # Stabilizing the Variance
@@ -188,7 +189,7 @@ for (length in time_series_lengths) {
                                     ncol = (4 + input_size + 1),
                                     nrow = nrow(input_windows))
                     sav_df = as.data.frame(sav_df)
-                    sav_df[, 1] = paste(idr - 1, '|i', sep = '')
+                    sav_df[, 1] = paste(i - 1, '|i', sep = '')
                     #sav_df[, 2:(input_size + 1)] = exogenous_windows
                     sav_df[, 2] = seasonality_windows
                     #sav_df[, (input_size + 2)] = seasonality_windows

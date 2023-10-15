@@ -127,6 +127,31 @@ class StackingModel:
             optimizer = cocob_optimizer.COCOB()
         return optimizer
 
+    def __quantile_loss(y_true,y_pred_q,q):
+            """
+            Compute the quantile loss of the given quantile.
+
+            Parameters
+            ----------
+            y_true
+                ground truth values to compute the loss against.
+            y_pred_p
+                predicted target quantile, same shape as ``y_true``.
+            q
+                chosen quantile
+
+            Returns
+            -------
+            Tensor
+                quantile loss, shape: (N1 x N2 x ... x Nk x 1)
+            """
+            under_bias = q  * K.maximum(y_true - y_pred_q, 0)
+            over_bias = (1 - q) * K.maximum(y_pred_q - y_true, 0)
+
+            qt_loss = 2 * (under_bias + over_bias)
+
+            return qt_loss
+    
     def __build_model(self, random_normal_initializer_stdev, num_hidden_layers, cell_dimension, l2_regularization, q, optimizer):
     # def __build_model(self, random_normal_initializer_stdev, num_hidden_layers, cell_dimension, q, optimizer):
         initializer = tf.keras.initializers.TruncatedNormal(stddev=random_normal_initializer_stdev)
@@ -148,34 +173,7 @@ class StackingModel:
 
         # plot the model to validate
         self.__model.summary()
-        
-        def quantile_loss(y_true,y_pred_q,q):
-            """
-            Compute the quantile loss of the given quantile.
-
-            Parameters
-            ----------
-            F
-                A module that can either refer to the Symbol API or the NDArray
-                API in MXNet.
-            y_true
-                ground truth values to compute the loss against.
-            y_pred_p
-                predicted target quantile, same shape as ``y_true``.
-            q
-                chosen quantile
-
-            Returns
-            -------
-            Tensor
-                quantile loss, shape: (N1 x N2 x ... x Nk x 1)
-            """
-            under_bias = q  * K.maximum(y_true - y_pred_q, 0)
-            over_bias = (1 - q) * K.maximum(y_pred_q - y_true, 0)
-
-            qt_loss = 2 * (under_bias + over_bias)
-
-            return qt_loss
+          
             # e = (y-f)
             # return K.mean(K.maximum(q*e, (q-1)*e), axis=-1)
         
@@ -190,7 +188,7 @@ class StackingModel:
         #     total_loss = error + l2_loss
         #     return total_loss
 
-        self.__model.compile(loss=lambda y,f: quantile_loss(y,f,q),
+        self.__model.compile(loss=lambda y,f: self.__quantile_loss(y,f,q),
                       optimizer=optimizer)
 
     def tune_hyperparameters(self, **kwargs):
@@ -221,7 +219,8 @@ class StackingModel:
         # repeating for epoch size and batching
         train_dataset = self.__training_dataset_for_train_parsed.repeat(max_epoch_size)
         train_dataset = train_dataset.padded_batch(batch_size=int(minibatch_size), padded_shapes=train_padded_shapes)
-        
+        last_validation_outputs = {} # for different quantiles
+
         for q in qr:
             self.__build_model(random_normal_initializer_stdev, num_hidden_layers, cell_dimension, l2_regularization, q, optimizer)
 
@@ -232,54 +231,56 @@ class StackingModel:
             validation_prediction = self.__model.predict(self.__validation_dataset_input_padded)
 
             #calculate the validation losses
-            last_validation_outputs = validation_prediction[self.__array_first_dimension, self.__last_indices]
-        actual_values = self.__validation_dataset_output_padded[self.__array_first_dimension, self.__last_indices, :]
+            last_validation_outputs[q] = validation_prediction[self.__array_first_dimension, self.__last_indices]
+            
+            actual_values = self.__validation_dataset_output_padded[self.__array_first_dimension, self.__last_indices, :]
 
-        mean_values = self.__validation_metadata[:, 0]
-        mean_values = mean_values[:, np.newaxis]
+            mean_values = self.__validation_metadata[:, 0]
+            mean_values = mean_values[:, np.newaxis]
 
-        level_values = self.__validation_metadata[:, 1]
-        level_values = level_values[:, np.newaxis]
+            level_values = self.__validation_metadata[:, 1]
+            level_values = level_values[:, np.newaxis]
 
-        if self.__without_stl_decomposition:
+            converted_validation_output = {} # for different quantiles
+            if self.__without_stl_decomposition:
 
-            converted_validation_output = np.exp(last_validation_outputs + level_values)
-            converted_actual_values = np.exp(actual_values + level_values)
+                converted_validation_output[q] = np.exp(last_validation_outputs[q] + level_values)
+                converted_actual_values = np.exp(actual_values + level_values)
 
-        else:
-            true_seasonality_values = self.__validation_metadata[:, 2:]
-            converted_validation_output = np.exp(
-                true_seasonality_values + level_values + last_validation_outputs)
-            converted_actual_values = np.exp(
-                true_seasonality_values + level_values + actual_values)
+            else:
+                true_seasonality_values = self.__validation_metadata[:, 2:]
+                converted_validation_output[q] = np.exp(
+                    true_seasonality_values + level_values + last_validation_outputs[q])
+                converted_actual_values = np.exp(
+                    true_seasonality_values + level_values + actual_values)
 
-        if self.__contain_zero_values:  # to compensate for 0 values in data
-            converted_validation_output = converted_validation_output - 1
-            converted_actual_values = converted_actual_values - 1
+            if self.__contain_zero_values:  # to compensate for 0 values in data
+                converted_validation_output[q] = converted_validation_output[q] - 1
+                converted_actual_values = converted_actual_values - 1
 
-        converted_validation_output = converted_validation_output * mean_values
-        converted_actual_values = converted_actual_values * mean_values
+            converted_validation_output[q] = converted_validation_output[q] * mean_values
+            converted_actual_values = converted_actual_values * mean_values
 
-        if self.__integer_conversion:
-            converted_validation_output = np.round(converted_validation_output)
-            converted_actual_values = np.round(converted_actual_values)
+            if self.__integer_conversion:
+                converted_validation_output[q] = np.round(converted_validation_output[q])
+                converted_actual_values = np.round(converted_actual_values)
 
-        converted_validation_output[converted_validation_output < 0] = 0
-        converted_actual_values[converted_actual_values < 0] = 0
+            converted_validation_output[q][converted_validation_output[q] < 0] = 0
+            converted_actual_values[converted_actual_values < 0] = 0
 
         if self.__evaluation_metric == 'CRPS':
             self.quantile_weights = [1.0 / len(qr)] * len(qr)
             qt_loss = []
             for level, weight, y_pred_q in zip(
-                qr, self.quantile_weights, converted_validation_output
+                qr, self.quantile_weights, list(converted_validation_output.values())
             ):
                 qt_loss.append(
-                    weight * self.compute_quantile_loss(F, y_true, y_pred_q, level)
+                    weight * self.__quantile_loss(converted_actual_values, y_pred_q, level)
                 )
-            stacked_qt_losses = F.stack(*qt_loss, axis=-1)
-            sum_qt_loss = F.mean(
-                stacked_qt_losses, axis=-1
-            )  # avg across quantiles
+            print(qt_loss)
+            # stacked_qt_losses = F.stack(*qt_loss, axis=-1)
+            metric = np.mean(qt_loss)
+
         if self.__evaluation_metric == 'sMAPE':
             if self.__address_near_zero_instability:
                 # calculate the smape
@@ -320,6 +321,7 @@ class StackingModel:
         else:
             optimizer = self.__get_optimizer()
 
+        qr = self.__quantile_range
         # prepare the data
         self.__create_testing_datasets(gaussian_noise_stdev)
 
@@ -329,17 +331,14 @@ class StackingModel:
                                                                  padded_shapes=train_padded_shapes)
 
         # build a model for each quantile
-        # qs = np.linspace(0, 1, 21)
-        # for q in qs:
-            # self.__build_model(random_normal_initializer_stdev, num_hidden_layers, cell_dimension, q, optimizer)
+        for q in qr:
+            self.__build_model(random_normal_initializer_stdev, num_hidden_layers, cell_dimension, l2_regularization, q, optimizer)
 
-        self.__build_model(random_normal_initializer_stdev, num_hidden_layers, cell_dimension, l2_regularization, optimizer)
+            # training
+            self.__model.fit(train_dataset, epochs=max_num_epochs, shuffle=True)
 
-        # training
-        self.__model.fit(train_dataset, epochs=max_num_epochs, shuffle=True)
-
-        # testing
-        test_prediction = self.__model.predict(self.__testing_dataset_input_padded)
+            # testing
+            test_prediction = self.__model.predict(self.__testing_dataset_input_padded)
 
         # extracting the final time step forecast
         last_output_index = self.__testing_dataset_lengths - 1
