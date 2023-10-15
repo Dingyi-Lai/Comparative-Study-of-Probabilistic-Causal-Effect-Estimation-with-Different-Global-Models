@@ -1,0 +1,4 @@
+tensorflow
+numpy
+pandas
+smac==0.11.1
