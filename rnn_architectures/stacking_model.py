@@ -1,7 +1,12 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import tensorflow as tf
 import tensorflow.keras.backend as K
-
+from typeguard import typechecked
+# import tensorflow_addons as tfa # resource limits
+# from tensorflow_addons.utils.types import TensorLike, FloatTensorLike
+# from tensorflow_addons.utils.keras_utils import LossFunctionWrapper
+from keras.utils import losses_utils
+from keras.losses import LossFunctionWrapper
 import sys
 sys.path.insert(0, ".")
 
@@ -12,6 +17,115 @@ from configs.global_configs import training_data_configs
 
 # how to bucket by the sequence lengths
 # tensorboard
+
+@tf.function
+def pinball_loss(
+    y_true, y_pred, tau = 0.5
+):
+    """Computes the pinball loss between `y_true` and `y_pred`.
+
+    `loss = maximum(tau * (y_true - y_pred), (tau - 1) * (y_true - y_pred))`
+
+    In the context of regression this loss yields an estimator of the tau
+    conditional quantile.
+
+    See: https://en.wikipedia.org/wiki/Quantile_regression
+
+    Usage:
+
+    >>> loss = tfa.losses.pinball_loss([0., 0., 1., 1.],
+    ... [1., 1., 1., 0.], tau=.1)
+    >>> loss
+    <tf.Tensor: shape=(), dtype=float32, numpy=0.475>
+
+    Args:
+    y_true: Ground truth values. shape = `[batch_size, d0, .. dN]`
+    y_pred: The predicted values. shape = `[batch_size, d0, .. dN]`
+    tau: (Optional) Float in [0, 1] or a tensor taking values in [0, 1] and
+        shape = `[d0,..., dn]`.  It defines the slope of the pinball loss. In
+        the context of quantile regression, the value of tau determines the
+        conditional quantile level. When tau = 0.5, this amounts to l1
+        regression, an estimator of the conditional median (0.5 quantile).
+
+    Returns:
+        pinball_loss: 1-D float `Tensor` with shape [batch_size].
+
+    References:
+    - https://en.wikipedia.org/wiki/Quantile_regression
+    - https://projecteuclid.org/download/pdfview_1/euclid.bj/1297173840
+    """
+    # under_bias = q  * K.maximum(y_true - y_pred_q, 0)
+    # over_bias = (1 - q) * K.maximum(y_pred_q - y_true, 0)
+
+    # qt_loss = under_bias + over_bias
+    # print(np.sum(np.abs((y_pred_q - y_true) * ((y_true <= y_pred_q) - q))))
+    # print(qt_loss)
+    # assert qt_loss == np.sum(np.abs((y_pred_q - y_true) * ((y_true <= y_pred_q) - q)))
+    # return qt_loss
+    y_pred = tf.convert_to_tensor(y_pred)
+    y_true = tf.cast(y_true, y_pred.dtype)
+
+    # Broadcast the pinball slope along the batch dimension
+    tau = tf.expand_dims(tf.cast(tau, y_pred.dtype), 0)
+    one = tf.cast(1, tau.dtype)
+
+    delta_y = y_true - y_pred
+    pinball = tf.math.maximum(tau * delta_y, (tau - one) * delta_y)
+    return tf.reduce_mean(pinball, axis=-1)
+
+
+class PinballLoss(LossFunctionWrapper):
+    """Computes the pinball loss between `y_true` and `y_pred`.
+
+    `loss = maximum(tau * (y_true - y_pred), (tau - 1) * (y_true - y_pred))`
+
+    In the context of regression, this loss yields an estimator of the tau
+    conditional quantile.
+
+    See: https://en.wikipedia.org/wiki/Quantile_regression
+
+    Usage:
+
+    >>> pinball = tfa.losses.PinballLoss(tau=.1)
+    >>> loss = pinball([0., 0., 1., 1.], [1., 1., 1., 0.])
+    >>> loss
+    <tf.Tensor: shape=(), dtype=float32, numpy=0.475>
+
+    Usage with the `tf.keras` API:
+
+    >>> model = tf.keras.Model()
+    >>> model.compile('sgd', loss=tfa.losses.PinballLoss(tau=.1))
+
+    Args:
+      tau: (Optional) Float in [0, 1] or a tensor taking values in [0, 1] and
+        shape = `[d0,..., dn]`.  It defines the slope of the pinball loss. In
+        the context of quantile regression, the value of tau determines the
+        conditional quantile level. When tau = 0.5, this amounts to l1
+        regression, an estimator of the conditional median (0.5 quantile).
+      reduction: (Optional) Type of `tf.keras.losses.Reduction` to apply to
+        loss. Default value is `AUTO`. `AUTO` indicates that the reduction
+        option will be determined by the usage context. For almost all cases
+        this defaults to `SUM_OVER_BATCH_SIZE`.
+        When used with `tf.distribute.Strategy`, outside of built-in training
+        loops such as `tf.keras` `compile` and `fit`, using `AUTO` or
+        `SUM_OVER_BATCH_SIZE` will raise an error. Please see
+        https://www.tensorflow.org/alpha/tutorials/distribute/training_loops
+        for more details on this.
+      name: Optional name for the op.
+
+    References:
+      - https://en.wikipedia.org/wiki/Quantile_regression
+      - https://projecteuclid.org/download/pdfview_1/euclid.bj/1297173840
+    """
+
+    @typechecked
+    def __init__(
+        self,
+        tau = 0.5,
+        reduction=losses_utils.ReductionV2.AUTO,
+        name: str = "pinball_loss",
+    ):
+        super().__init__(pinball_loss, reduction=reduction, name=name, tau=tau)
 
 class StackingModel:
 
@@ -127,30 +241,6 @@ class StackingModel:
             optimizer = cocob_optimizer.COCOB()
         return optimizer
 
-    def __quantile_loss(y_true,y_pred_q,q):
-            """
-            Compute the quantile loss of the given quantile.
-
-            Parameters
-            ----------
-            y_true
-                ground truth values to compute the loss against.
-            y_pred_p
-                predicted target quantile, same shape as ``y_true``.
-            q
-                chosen quantile
-
-            Returns
-            -------
-            Tensor
-                quantile loss, shape: (N1 x N2 x ... x Nk x 1)
-            """
-            under_bias = q  * K.maximum(y_true - y_pred_q, 0)
-            over_bias = (1 - q) * K.maximum(y_pred_q - y_true, 0)
-
-            qt_loss = 2 * (under_bias + over_bias)
-
-            return qt_loss
     
     def __build_model(self, random_normal_initializer_stdev, num_hidden_layers, cell_dimension, l2_regularization, q, optimizer):
     # def __build_model(self, random_normal_initializer_stdev, num_hidden_layers, cell_dimension, q, optimizer):
@@ -173,9 +263,6 @@ class StackingModel:
 
         # plot the model to validate
         self.__model.summary()
-          
-            # e = (y-f)
-            # return K.mean(K.maximum(q*e, (q-1)*e), axis=-1)
         
         # def custom_mae(y_true, y_pred):
         #     error = tf.keras.losses.mae(y_true, y_pred)
@@ -188,8 +275,21 @@ class StackingModel:
         #     total_loss = error + l2_loss
         #     return total_loss
 
-        self.__model.compile(loss=lambda y,f: self.__quantile_loss(y,f,q),
-                      optimizer=optimizer)
+        def custom_ql(y_true, y_pred,q): # add l2_regularization
+            error = pinball_loss(y_true, y_pred, q)
+            l2_loss = 0.0
+            for var in self.__model.trainable_variables:
+                l2_loss += tf.nn.l2_loss(var)
+
+            l2_loss = tf.math.multiply(l2_regularization, l2_loss)
+
+            total_loss = error + l2_loss
+            return total_loss
+
+        # self.__model.compile(loss=PinballLoss(tau=q),
+        #               optimizer=optimizer)
+        self.__model.compile(loss=lambda y,f: custom_ql(y,f,q),
+                             optimizer=optimizer)
 
     def tune_hyperparameters(self, **kwargs):
         num_hidden_layers = int(kwargs['num_hidden_layers'])
@@ -275,7 +375,7 @@ class StackingModel:
                 qr, self.quantile_weights, list(converted_validation_output.values())
             ):
                 qt_loss.append(
-                    weight * self.__quantile_loss(converted_actual_values, y_pred_q, level)
+                    weight * pinball_loss(converted_actual_values, y_pred_q, level) * 2
                 )
             print(qt_loss)
             # stacked_qt_losses = F.stack(*qt_loss, axis=-1)
@@ -329,7 +429,7 @@ class StackingModel:
         train_dataset = self.__training_dataset_for_test_parsed.repeat(max_epoch_size)
         train_dataset = self.__training_dataset_for_test_parsed.padded_batch(batch_size=minibatch_size,
                                                                  padded_shapes=train_padded_shapes)
-
+        forecasts = {} # for different quantiles
         # build a model for each quantile
         for q in qr:
             self.__build_model(random_normal_initializer_stdev, num_hidden_layers, cell_dimension, l2_regularization, q, optimizer)
@@ -340,8 +440,8 @@ class StackingModel:
             # testing
             test_prediction = self.__model.predict(self.__testing_dataset_input_padded)
 
-        # extracting the final time step forecast
-        last_output_index = self.__testing_dataset_lengths - 1
-        array_first_dimension = np.array(range(0, self.__no_of_series))
-        forecasts = test_prediction[array_first_dimension, last_output_index]
+            # extracting the final time step forecast
+            last_output_index = self.__testing_dataset_lengths - 1
+            array_first_dimension = np.array(range(0, self.__no_of_series))
+            forecasts[q] = test_prediction[array_first_dimension, last_output_index]
         return forecasts

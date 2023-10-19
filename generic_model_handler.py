@@ -155,6 +155,8 @@ if __name__ == '__main__':
     argument_parser.add_argument('--optimizer', required=False, help='The type of the optimizer(cocob/adam/adagrad...). Default is cocob')
     argument_parser.add_argument('--quantile_range', required=False, 
                                  help='The range of the quantile for quantile forecasting. Default is np.linspace(0, 1, 21)')
+    argument_parser.add_argument('--evaluation_metric', required=False, 
+                                 help='The evaluation metric like sMAPE. Default is CRPS')
     argument_parser.add_argument('--without_stl_decomposition', required=False,
                                  help='Whether not to use stl decomposition(0/1). Default is 0')
 
@@ -195,6 +197,11 @@ if __name__ == '__main__':
         quantile_range = args.quantile_range
     else:
         quantile_range = np.linspace(0, 1, 21)
+    
+    if args.evaluation_metric:
+        evaluation_metric = args.evaluation_metric
+    else:
+        evaluation_metric = "CRPS"
 
     if args.without_stl_decomposition:
         without_stl_decomposition = bool(int(args.without_stl_decomposition))
@@ -235,6 +242,7 @@ if __name__ == '__main__':
         'output_size': output_size,
         'optimizer': optimizer,
         'quantile_range': quantile_range,
+        'evaluation_metric': evaluation_metric,
         'no_of_series': no_of_series,
         'binary_train_file_path': binary_train_file_path_train_mode,
         'binary_test_file_path': binary_test_file_path_test_mode,
@@ -268,7 +276,7 @@ if __name__ == '__main__':
         os.remove(file)
 
     # optimized_configuration = read_optimal_hyperparameter_values("results/optimized_configurations/" + model_identifier + ".txt")
-
+    print("before test")
     for seed in range(1, 11):
         forecasts = model.test_model(optimized_configuration, seed)
 
@@ -277,25 +285,25 @@ if __name__ == '__main__':
 
         with open(rnn_forecasts_file_path, "w") as output:
             writer = csv.writer(output, lineterminator='\n')
-            writer.writerows(forecasts)
+            writer.writerows(forecasts.items())
 
-    # ensemble the forecasts
-    ensembling_forecasts(model_identifier, model_testing_configs.FORECASTS_DIRECTORY,
-                         model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY)
+    # # ensemble the forecasts
+    # ensembling_forecasts(model_identifier, model_testing_configs.FORECASTS_DIRECTORY,
+    #                      model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY)
 
-    print("invoking R")
-    # invoke the final error calculation
-    invoke_script([model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY + model_identifier + ".txt",
-                   model_testing_configs.ENSEMBLE_ERRORS_DIRECTORY,
-                   model_testing_configs.PROCESSED_ENSEMBLE_FORECASTS_DIRECTORY,
-                   model_identifier,
-                   txt_test_file_path,
-                   actual_results_file_path,
-                   original_data_file_path,
-                   str(input_size),
-                   str(output_size),
-                   str(int(contain_zero_values)),
-                   str(int(address_near_zero_instability)),
-                   str(int(integer_conversion)),
-                   str(seasonality_period),
-                   str(int(without_stl_decomposition))])
+    # print("invoking R")
+    # # invoke the final error calculation
+    # invoke_script([model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY + model_identifier + ".txt",
+    #                model_testing_configs.ENSEMBLE_ERRORS_DIRECTORY,
+    #                model_testing_configs.PROCESSED_ENSEMBLE_FORECASTS_DIRECTORY,
+    #                model_identifier,
+    #                txt_test_file_path,
+    #                actual_results_file_path,
+    #                original_data_file_path,
+    #                str(input_size),
+    #                str(output_size),
+    #                str(int(contain_zero_values)),
+    #                str(int(address_near_zero_instability)),
+    #                str(int(integer_conversion)),
+    #                str(seasonality_period),
+    #                str(int(without_stl_decomposition))])
