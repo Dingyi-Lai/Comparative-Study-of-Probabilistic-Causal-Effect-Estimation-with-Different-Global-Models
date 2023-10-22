@@ -1,0 +1,72 @@
+{
+  "hyperparameters": [
+    {
+      "name": "cell_dimension",
+      "type": "uniform_int",
+      "log": false,
+      "lower": 20,
+      "upper": 25,
+      "default": 20
+    },
+    {
+      "name": "gaussian_noise_stdev",
+      "type": "uniform_float",
+      "log": false,
+      "lower": 0.0001,
+      "upper": 0.0008,
+      "default": 0.0001
+    },
+    {
+      "name": "l2_regularization",
+      "type": "uniform_float",
+      "log": false,
+      "lower": 0.0001,
+      "upper": 0.0008,
+      "default": 0.0001
+    },
+    {
+      "name": "max_epoch_size",
+      "type": "uniform_int",
+      "log": false,
+      "lower": 2,
+      "upper": 10,
+      "default": 2
+    },
+    {
+      "name": "max_num_epochs",
+      "type": "uniform_int",
+      "log": false,
+      "lower": 2,
+      "upper": 25,
+      "default": 2
+    },
+    {
+      "name": "minibatch_size",
+      "type": "uniform_int",
+      "log": false,
+      "lower": 5,
+      "upper": 15,
+      "default": 5
+    },
+    {
+      "name": "num_hidden_layers",
+      "type": "uniform_int",
+      "log": false,
+      "lower": 1,
+      "upper": 2,
+      "default": 1
+    },
+    {
+      "name": "random_normal_initializer_stdev",
+      "type": "uniform_float",
+      "log": false,
+      "lower": 0.0001,
+      "upper": 0.0008,
+      "default": 0.0001
+    }
+  ],
+  "conditions": [],
+  "forbiddens": [],
+  "python_module_version": "0.4.19",
+  "json_format_version": 0.2
+}

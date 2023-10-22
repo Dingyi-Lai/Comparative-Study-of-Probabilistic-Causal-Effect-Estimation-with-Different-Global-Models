@@ -264,16 +264,16 @@ class StackingModel:
         # plot the model to validate
         self.__model.summary()
         
-        # def custom_mae(y_true, y_pred):
-        #     error = tf.keras.losses.mae(y_true, y_pred)
-        #     l2_loss = 0.0
-        #     for var in self.__model.trainable_variables:
-        #         l2_loss += tf.nn.l2_loss(var)
+        def custom_mae(y_true, y_pred):
+            error = tf.keras.losses.mae(y_true, y_pred)
+            l2_loss = 0.0
+            for var in self.__model.trainable_variables:
+                l2_loss += tf.nn.l2_loss(var)
 
-        #     l2_loss = tf.math.multiply(l2_regularization, l2_loss)
+            l2_loss = tf.math.multiply(l2_regularization, l2_loss)
 
-        #     total_loss = error + l2_loss
-        #     return total_loss
+            total_loss = error + l2_loss
+            return total_loss
 
         def custom_ql(y_true, y_pred,q): # add l2_regularization
             error = pinball_loss(y_true, y_pred, q)
@@ -286,10 +286,12 @@ class StackingModel:
             total_loss = error + l2_loss
             return total_loss
 
-        # self.__model.compile(loss=PinballLoss(tau=q),
+        self.__model.compile(loss=PinballLoss(tau=q),
+                      optimizer=optimizer)
+        # self.__model.compile(loss=lambda y,f: custom_ql(y,f,q),
+        #                      optimizer=optimizer)
+        # self.__model.compile(loss=custom_mae,
         #               optimizer=optimizer)
-        self.__model.compile(loss=lambda y,f: custom_ql(y,f,q),
-                             optimizer=optimizer)
 
     def tune_hyperparameters(self, **kwargs):
         num_hidden_layers = int(kwargs['num_hidden_layers'])
@@ -322,6 +324,7 @@ class StackingModel:
         last_validation_outputs = {} # for different quantiles
 
         for q in qr:
+            print(q)
             self.__build_model(random_normal_initializer_stdev, num_hidden_layers, cell_dimension, l2_regularization, q, optimizer)
 
             # training
@@ -382,19 +385,38 @@ class StackingModel:
             metric = np.mean(qt_loss)
 
         if self.__evaluation_metric == 'sMAPE':
-            if self.__address_near_zero_instability:
-                # calculate the smape
-                epsilon = 0.1
-                sum = np.maximum(np.abs(converted_validation_output) + np.abs(converted_actual_values) + epsilon,
-                                0.5 + epsilon)
-                smape_values = (np.abs(converted_validation_output - converted_actual_values) /
-                                sum) * 2
-                smape_values_per_series = np.mean(smape_values, axis=1)
-            else:
-                # calculate the smape
-                smape_values = (np.abs(converted_validation_output - converted_actual_values) /
-                                (np.abs(converted_validation_output) + np.abs(converted_actual_values))) * 2
-                smape_values_per_series = np.mean(smape_values, axis=1)
+            smape_values_per_series = []
+            for level, y_pred_q in zip(
+                qr, list(converted_validation_output.values())
+            ):
+                
+                if self.__address_near_zero_instability:
+                    # calculate the smape
+                    epsilon = 0.1
+                    sum = np.maximum(np.abs(y_pred_q) + np.abs(converted_actual_values) + epsilon,
+                                    0.5 + epsilon)
+                    smape_values = (np.abs(y_pred_q - converted_actual_values) /
+                                    sum) * 2
+                    smape_values_per_series.append(np.mean(smape_values, axis=1))
+                else:
+                    # calculate the smape
+                    smape_values = (np.abs(y_pred_q - converted_actual_values) /
+                                    (np.abs(y_pred_q) + np.abs(converted_actual_values))) * 2
+                    smape_values_per_series.append(np.mean(smape_values, axis=1))
+    
+            # if self.__address_near_zero_instability:
+            #     # calculate the smape
+            #     epsilon = 0.1
+            #     sum = np.maximum(np.abs(converted_validation_output) + np.abs(converted_actual_values) + epsilon,
+            #                     0.5 + epsilon)
+            #     smape_values = (np.abs(converted_validation_output - converted_actual_values) /
+            #                     sum) * 2
+            #     smape_values_per_series = np.mean(smape_values, axis=1)
+            # else:
+            #     # calculate the smape
+            #     smape_values = (np.abs(converted_validation_output - converted_actual_values) /
+            #                     (np.abs(converted_validation_output) + np.abs(converted_actual_values))) * 2
+            #     smape_values_per_series = np.mean(smape_values, axis=1)
 
             metric = np.mean(smape_values_per_series)
 

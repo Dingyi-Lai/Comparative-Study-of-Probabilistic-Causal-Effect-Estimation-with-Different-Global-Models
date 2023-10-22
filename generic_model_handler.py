@@ -1,4 +1,6 @@
 print('begin')
+import time
+T1 = time.time()
 import numpy as np
 import argparse
 import csv
@@ -196,11 +198,13 @@ if __name__ == '__main__':
     if args.quantile_range:
         quantile_range = args.quantile_range
     else:
-        quantile_range = np.linspace(0, 1, 21)
+        # quantile_range = np.linspace(0, 1, 21)
+        quantile_range = [0.1,0.5,0.9]
     
     if args.evaluation_metric:
         evaluation_metric = args.evaluation_metric
     else:
+        # evaluation_metric = "sMAPE"
         evaluation_metric = "CRPS"
 
     if args.without_stl_decomposition:
@@ -277,6 +281,8 @@ if __name__ == '__main__':
 
     # optimized_configuration = read_optimal_hyperparameter_values("results/optimized_configurations/" + model_identifier + ".txt")
     print("before test")
+    T2 = time.time()
+    print(T2)
     for seed in range(1, 11):
         forecasts = model.test_model(optimized_configuration, seed)
 
@@ -286,7 +292,10 @@ if __name__ == '__main__':
         with open(rnn_forecasts_file_path, "w") as output:
             writer = csv.writer(output, lineterminator='\n')
             writer.writerows(forecasts.items())
-
+    T3 = time.time()
+    print('程序运行时间:%s毫秒' % ((T2 - T1)*1000))
+    print('程序运行时间:%s毫秒' % ((T3 - T2)*1000))
+    print('程序运行时间:%s毫秒' % ((T3 - T1)*1000))
     # # ensemble the forecasts
     # ensembling_forecasts(model_identifier, model_testing_configs.FORECASTS_DIRECTORY,
     #                      model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY)
