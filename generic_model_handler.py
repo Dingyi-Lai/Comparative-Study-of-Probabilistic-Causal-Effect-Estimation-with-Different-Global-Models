@@ -6,9 +6,10 @@ import argparse
 import csv
 import glob
 import os
+import pdb
 
 from utility_scripts.persist_optimized_config_results import persist_results
-# from utility_scripts.hyperparameter_scripts.hyperparameter_config_reader import read_optimal_hyperparameter_values
+from utility_scripts.hyperparameter_scripts.hyperparameter_config_reader import read_optimal_hyperparameter_values
 from utility_scripts.hyperparameter_scripts.hyperparameter_config_reader import read_initial_hyperparameter_values
 from configs.global_configs import hyperparameter_tuning_configs
 from configs.global_configs import model_testing_configs
@@ -262,57 +263,62 @@ if __name__ == '__main__':
     # select the model type
     model = StackingModel(**model_kwargs)
 
-    # delete hyperparameter configs files if existing
-    for file in glob.glob(hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + model_identifier + "*"):
-        os.remove(file)
+    # # delete hyperparameter configs files if existing
+    # for file in glob.glob(hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + model_identifier + "*"):
+    #     os.remove(file)
 
-    # read the initial hyperparamter configurations from the file
-    hyperparameter_values_dic = read_initial_hyperparameter_values(initial_hyperparameter_values_file)
-    optimized_configuration = smac()
-    print(optimized_configuration)
+    # # read the initial hyperparamter configurations from the file
+    # hyperparameter_values_dic = read_initial_hyperparameter_values(initial_hyperparameter_values_file)
+    # optimized_configuration = smac()
+    # print(optimized_configuration)
 
-    # persist the optimized configuration to a file
-    persist_results(optimized_configuration, hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + '/' + model_identifier + '.txt')
+    # # persist the optimized configuration to a file
+    # persist_results(optimized_configuration, hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + '/' + model_identifier + '.txt')
 
     # delete the forecast files if existing
-    for file in glob.glob(
-            model_testing_configs.FORECASTS_DIRECTORY + model_identifier + "*"):
-        os.remove(file)
+    # for file in glob.glob(
+    #         model_testing_configs.FORECASTS_DIRECTORY + model_identifier + "*"):
+    #     os.remove(file)
 
-    # optimized_configuration = read_optimal_hyperparameter_values("results/optimized_configurations/" + model_identifier + ".txt")
-    print("before test")
-    T2 = time.time()
-    print(T2)
-    for seed in range(1, 11):
-        forecasts = model.test_model(optimized_configuration, seed)
+    # # not training again but just read in
+    # optimized_configuration = read_optimal_hyperparameter_values("./results/nn_model_results/rnn/optimized_configurations/" + model_identifier + ".txt")
+    # print(optimized_configuration)
 
-        model_identifier_extended = model_identifier + "_" + str(seed)
-        rnn_forecasts_file_path = model_testing_configs.FORECASTS_DIRECTORY + model_identifier_extended + '.txt'
+    # print("before test")
+    # T2 = time.time()
+    # print(T2)
+    # for seed in range(1, 11):
+    #     forecasts = model.test_model(optimized_configuration, seed)
 
-        with open(rnn_forecasts_file_path, "w") as output:
-            writer = csv.writer(output, lineterminator='\n')
-            writer.writerows(forecasts.items())
-    T3 = time.time()
-    print('程序运行时间:%s毫秒' % ((T2 - T1)*1000))
-    print('程序运行时间:%s毫秒' % ((T3 - T2)*1000))
-    print('程序运行时间:%s毫秒' % ((T3 - T1)*1000))
-    # # ensemble the forecasts
+    #     model_identifier_extended = model_identifier + "_" + str(seed)
+    #     for k, v in forecasts.items():
+    #         rnn_forecasts_file_path = model_testing_configs.FORECASTS_DIRECTORY + model_identifier_extended + 'q_' + str(k) + '.txt'
+            
+    #         with open(rnn_forecasts_file_path, "w") as output:
+    #             writer = csv.writer(output, lineterminator='\n')
+    #             writer.writerows(forecasts[k])
+    # T3 = time.time()
+    # print('Running time: %s ms' % ((T2 - T1)*1000))
+    # print('Running time: %s ms' % ((T3 - T2)*1000))
+    # print('Running time: %s ms' % ((T3 - T1)*1000))
+    # ensemble the forecasts
     # ensembling_forecasts(model_identifier, model_testing_configs.FORECASTS_DIRECTORY,
-    #                      model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY)
+    #                      model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY,quantile_range)
 
-    # print("invoking R")
-    # # invoke the final error calculation
-    # invoke_script([model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY + model_identifier + ".txt",
-    #                model_testing_configs.ENSEMBLE_ERRORS_DIRECTORY,
-    #                model_testing_configs.PROCESSED_ENSEMBLE_FORECASTS_DIRECTORY,
-    #                model_identifier,
-    #                txt_test_file_path,
-    #                actual_results_file_path,
-    #                original_data_file_path,
-    #                str(input_size),
-    #                str(output_size),
-    #                str(int(contain_zero_values)),
-    #                str(int(address_near_zero_instability)),
-    #                str(int(integer_conversion)),
-    #                str(seasonality_period),
-    #                str(int(without_stl_decomposition))])
+    print("invoking R")
+    # invoke the final error calculation
+    invoke_script([model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY,
+                   model_testing_configs.ENSEMBLE_ERRORS_DIRECTORY,
+                   model_testing_configs.PROCESSED_ENSEMBLE_FORECASTS_DIRECTORY,
+                   model_identifier,
+                   txt_test_file_path,
+                   actual_results_file_path,
+                   original_data_file_path,
+                   str(input_size),
+                   str(output_size),
+                   str(int(contain_zero_values)),
+                   str(int(address_near_zero_instability)),
+                   str(int(integer_conversion)),
+                   str(seasonality_period),
+                   str(int(without_stl_decomposition)),
+                   quantile_range])
