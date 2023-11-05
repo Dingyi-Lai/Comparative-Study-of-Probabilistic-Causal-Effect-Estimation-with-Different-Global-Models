@@ -19,6 +19,7 @@ class model_testing_configs:
     # RNN related
     FORECASTS_DIRECTORY = './results/nn_model_results/rnn/forecasts/'
     ENSEMBLE_FORECASTS_DIRECTORY = './results/nn_model_results/rnn/ensemble_forecasts/'
+    ENSEMBLE_CS_FORECASTS_DIRECTORY = './results/nn_model_results/rnn/ensemble_interpolated_forecasts/'
     ENSEMBLE_ERRORS_DIRECTORY = './results/nn_model_results/rnn/ensemble_errors/'
     PROCESSED_ENSEMBLE_FORECASTS_DIRECTORY = './results/nn_model_results/rnn/processed_ensemble_forecasts/'
     AGGREGATED_ENSEMBLE_ERRORS_DIRECTORY = './results/nn_model_results/rnn/ensemble_errors/aggregate_errors/'

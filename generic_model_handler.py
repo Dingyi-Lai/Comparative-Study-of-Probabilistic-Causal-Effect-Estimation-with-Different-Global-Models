@@ -7,6 +7,11 @@ import csv
 import glob
 import os
 import pdb
+import pandas as pd
+# from scipy.interpolate import CubicSpline
+# import torch
+# from quantile_utils.spline_interpolation import spline_interpolation_from_forecasts
+from error_calculator.final_evaluation import evaluate
 
 from utility_scripts.persist_optimized_config_results import persist_results
 from utility_scripts.hyperparameter_scripts.hyperparameter_config_reader import read_optimal_hyperparameter_values
@@ -261,7 +266,7 @@ if __name__ == '__main__':
     }
 
     # select the model type
-    model = StackingModel(**model_kwargs)
+    # model = StackingModel(**model_kwargs)
 
     # # delete hyperparameter configs files if existing
     # for file in glob.glob(hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + model_identifier + "*"):
@@ -284,7 +289,7 @@ if __name__ == '__main__':
     # optimized_configuration = read_optimal_hyperparameter_values("./results/nn_model_results/rnn/optimized_configurations/" + model_identifier + ".txt")
     # print(optimized_configuration)
 
-    # print("before test")
+    # print("tuning finished")
     # T2 = time.time()
     # print(T2)
     # for seed in range(1, 11):
@@ -297,28 +302,65 @@ if __name__ == '__main__':
     #         with open(rnn_forecasts_file_path, "w") as output:
     #             writer = csv.writer(output, lineterminator='\n')
     #             writer.writerows(forecasts[k])
+    # print("prediction finished")
     # T3 = time.time()
-    # print('Running time: %s ms' % ((T2 - T1)*1000))
-    # print('Running time: %s ms' % ((T3 - T2)*1000))
-    # print('Running time: %s ms' % ((T3 - T1)*1000))
-    # ensemble the forecasts
-    # ensembling_forecasts(model_identifier, model_testing_configs.FORECASTS_DIRECTORY,
+    
+    
+    # # delete the ensembled forecast files if existing
+    # for file in glob.glob(
+    #         model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY + model_identifier + "*"):
+    #     os.remove(file)
+
+    # # ensemble the forecasts
+    # ensembled_forecasts = ensembling_forecasts(model_identifier, model_testing_configs.FORECASTS_DIRECTORY,
     #                      model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY,quantile_range)
 
-    print("invoking R")
-    # invoke the final error calculation
-    invoke_script([model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY,
+    # not training again but just read in
+    ensembled_forecasts = {}
+    for q in quantile_range:
+        ensembled_forecasts[q] = pd.read_csv(model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY +\
+                                              model_identifier + "_" + str(q) +".txt",header=None)
+
+    # print("interpolation and calculation of crps finished")
+    # T4 = time.time()
+
+    evaluate_args = [model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY,
                    model_testing_configs.ENSEMBLE_ERRORS_DIRECTORY,
                    model_testing_configs.PROCESSED_ENSEMBLE_FORECASTS_DIRECTORY,
                    model_identifier,
                    txt_test_file_path,
                    actual_results_file_path,
                    original_data_file_path,
-                   str(input_size),
-                   str(output_size),
-                   str(int(contain_zero_values)),
-                   str(int(address_near_zero_instability)),
-                   str(int(integer_conversion)),
-                   str(seasonality_period),
-                   str(int(without_stl_decomposition)),
-                   quantile_range])
+                   input_size,
+                   output_size,
+                   int(contain_zero_values),
+                   int(address_near_zero_instability),
+                   int(integer_conversion),
+                   seasonality_period,
+                   int(without_stl_decomposition)]
+    evaluate(evaluate_args, ensembled_forecasts)
+    # print("invoking R")
+    # # invoke the final error calculation
+    # invoke_script([model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY,
+    #                model_testing_configs.ENSEMBLE_ERRORS_DIRECTORY,
+    #                model_testing_configs.PROCESSED_ENSEMBLE_FORECASTS_DIRECTORY,
+    #                model_identifier,
+    #                txt_test_file_path,
+    #                actual_results_file_path,
+    #                original_data_file_path,
+    #                str(input_size),
+    #                str(output_size),
+    #                str(int(contain_zero_values)),
+    #                str(int(address_near_zero_instability)),
+    #                str(int(integer_conversion)),
+    #                str(seasonality_period),
+    #                str(int(without_stl_decomposition))])
+    
+    # print("R script finished")
+    T5 = time.time()
+
+    # print('Running time: %s m' % ((T2 - T1) / 60))
+    # print('Running time: %s m' % ((T3 - T2) / 60))
+    # print('Running time: %s m' % ((T3 - T1) / 60))
+    # print('Running time: %s m' % ((T4 - T2) / 60))
+    print('Running time: %s m' % ((T5 - T1) / 60))
