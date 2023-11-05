@@ -45,7 +45,7 @@ def evaluate(evaluate_args, ensembled_forecasts):
     input_size = evaluate_args[7]
     output_size = evaluate_args[8]
     contain_zero_values = evaluate_args[9]
-    address_near_zero_insability = evaluate_args[10]
+    address_near_zero_instability = evaluate_args[10]
     integer_conversion = evaluate_args[11]
     seasonality_period = evaluate_args[12]
     without_stl_decomposition = evaluate_args[13]
@@ -150,7 +150,7 @@ def evaluate(evaluate_args, ensembled_forecasts):
     # print(std_CRPS_str)
 
     # Calculating the SMAPE
-    if address_near_zero_insability:
+    if address_near_zero_instability:
         epsilon = 0.1
         comparator = 0.5 + epsilon
         sum_term = np.maximum(comparator, (np.abs(converted_forecasts_smape) + np.abs(np.array(actual_results_df)) + epsilon))

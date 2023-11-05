@@ -266,63 +266,63 @@ if __name__ == '__main__':
     }
 
     # select the model type
-    # model = StackingModel(**model_kwargs)
+    model = StackingModel(**model_kwargs)
 
-    # # delete hyperparameter configs files if existing
-    # for file in glob.glob(hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + model_identifier + "*"):
-    #     os.remove(file)
+    # delete hyperparameter configs files if existing
+    for file in glob.glob(hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + model_identifier + "*"):
+        os.remove(file)
 
-    # # read the initial hyperparamter configurations from the file
-    # hyperparameter_values_dic = read_initial_hyperparameter_values(initial_hyperparameter_values_file)
-    # optimized_configuration = smac()
-    # print(optimized_configuration)
+    # read the initial hyperparamter configurations from the file
+    hyperparameter_values_dic = read_initial_hyperparameter_values(initial_hyperparameter_values_file)
+    optimized_configuration = smac()
+    print(optimized_configuration)
 
-    # # persist the optimized configuration to a file
-    # persist_results(optimized_configuration, hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + '/' + model_identifier + '.txt')
+    # persist the optimized configuration to a file
+    persist_results(optimized_configuration, hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + '/' + model_identifier + '.txt')
 
     # delete the forecast files if existing
-    # for file in glob.glob(
-    #         model_testing_configs.FORECASTS_DIRECTORY + model_identifier + "*"):
-    #     os.remove(file)
+    for file in glob.glob(
+            model_testing_configs.FORECASTS_DIRECTORY + model_identifier + "*"):
+        os.remove(file)
 
     # # not training again but just read in
     # optimized_configuration = read_optimal_hyperparameter_values("./results/nn_model_results/rnn/optimized_configurations/" + model_identifier + ".txt")
     # print(optimized_configuration)
 
-    # print("tuning finished")
-    # T2 = time.time()
-    # print(T2)
-    # for seed in range(1, 11):
-    #     forecasts = model.test_model(optimized_configuration, seed)
+    print("tuning finished")
+    T2 = time.time()
+    print(T2)
+    for seed in range(1, 11):
+        forecasts = model.test_model(optimized_configuration, seed)
 
-    #     model_identifier_extended = model_identifier + "_" + str(seed)
-    #     for k, v in forecasts.items():
-    #         rnn_forecasts_file_path = model_testing_configs.FORECASTS_DIRECTORY + model_identifier_extended + 'q_' + str(k) + '.txt'
+        model_identifier_extended = model_identifier + "_" + str(seed)
+        for k, v in forecasts.items():
+            rnn_forecasts_file_path = model_testing_configs.FORECASTS_DIRECTORY + model_identifier_extended + 'q_' + str(k) + '.txt'
             
-    #         with open(rnn_forecasts_file_path, "w") as output:
-    #             writer = csv.writer(output, lineterminator='\n')
-    #             writer.writerows(forecasts[k])
-    # print("prediction finished")
-    # T3 = time.time()
+            with open(rnn_forecasts_file_path, "w") as output:
+                writer = csv.writer(output, lineterminator='\n')
+                writer.writerows(forecasts[k])
+    print("prediction finished")
+    T3 = time.time()
     
     
-    # # delete the ensembled forecast files if existing
-    # for file in glob.glob(
-    #         model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY + model_identifier + "*"):
-    #     os.remove(file)
+    # delete the ensembled forecast files if existing
+    for file in glob.glob(
+            model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY + model_identifier + "*"):
+        os.remove(file)
 
-    # # ensemble the forecasts
-    # ensembled_forecasts = ensembling_forecasts(model_identifier, model_testing_configs.FORECASTS_DIRECTORY,
-    #                      model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY,quantile_range)
+    # ensemble the forecasts
+    ensembled_forecasts = ensembling_forecasts(model_identifier, model_testing_configs.FORECASTS_DIRECTORY,
+                         model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY,quantile_range)
 
-    # not training again but just read in
-    ensembled_forecasts = {}
-    for q in quantile_range:
-        ensembled_forecasts[q] = pd.read_csv(model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY +\
-                                              model_identifier + "_" + str(q) +".txt",header=None)
+    # # not training again but just read in
+    # ensembled_forecasts = {}
+    # for q in quantile_range:
+    #     ensembled_forecasts[q] = pd.read_csv(model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY +\
+    #                                           model_identifier + "_" + str(q) +".txt",header=None)
 
-    # print("interpolation and calculation of crps finished")
-    # T4 = time.time()
+    print("ensembled finished")
+    T4 = time.time()
 
     evaluate_args = [model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY,
                    model_testing_configs.ENSEMBLE_ERRORS_DIRECTORY,
@@ -359,8 +359,8 @@ if __name__ == '__main__':
     # print("R script finished")
     T5 = time.time()
 
-    # print('Running time: %s m' % ((T2 - T1) / 60))
-    # print('Running time: %s m' % ((T3 - T2) / 60))
-    # print('Running time: %s m' % ((T3 - T1) / 60))
-    # print('Running time: %s m' % ((T4 - T2) / 60))
+    print('Running time: %s m' % ((T2 - T1) / 60))
+    print('Running time: %s m' % ((T3 - T2) / 60))
+    print('Running time: %s m' % ((T3 - T1) / 60))
+    print('Running time: %s m' % ((T4 - T2) / 60))
     print('Running time: %s m' % ((T5 - T1) / 60))

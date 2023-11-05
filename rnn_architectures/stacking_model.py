@@ -340,9 +340,11 @@ class StackingModel:
         self.__create_testing_datasets(gaussian_noise_stdev)
 
         train_padded_shapes = ([None, self.__input_size], [None, self.__output_size])
+        # train_dataset = self.__training_dataset_for_test_parsed.repeat(max_epoch_size)
+        # train_dataset = self.__training_dataset_for_test_parsed.padded_batch(batch_size=minibatch_size,
+        #                                                          padded_shapes=train_padded_shapes)
         train_dataset = self.__training_dataset_for_test_parsed.repeat(max_epoch_size)
-        train_dataset = self.__training_dataset_for_test_parsed.padded_batch(batch_size=minibatch_size,
-                                                                 padded_shapes=train_padded_shapes)
+        train_dataset = train_dataset.padded_batch(batch_size=int(minibatch_size), padded_shapes=train_padded_shapes)
         forecasts = {} # for different quantiles
         # build a model for each quantile
         for q in qr:
