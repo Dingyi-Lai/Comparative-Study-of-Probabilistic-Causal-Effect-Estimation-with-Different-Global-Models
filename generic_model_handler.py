@@ -1,39 +1,56 @@
+# Record the running time
 print('begin')
 import time
 T1 = time.time()
-import numpy as np
-import argparse
-import csv
-import glob
-import os
-import pdb
-import pandas as pd
-# from scipy.interpolate import CubicSpline
-# import torch
-# from quantile_utils.spline_interpolation import spline_interpolation_from_forecasts
-from error_calculator.final_evaluation import evaluate
 
-from utility_scripts.persist_optimized_config_results import persist_results
-from utility_scripts.hyperparameter_scripts.hyperparameter_config_reader import read_optimal_hyperparameter_values
-from utility_scripts.hyperparameter_scripts.hyperparameter_config_reader import read_initial_hyperparameter_values
+# Inbuilt or External Modules
+import argparse # customized arguments in .bash
+import csv # input and output .csv data
+import glob # file matching using wildcards
+import numpy as np # for numerical computing
+import os # OS routines
+# import pdb # debugger, but it doesn't work remotely
+import pandas as pd
+
+# Customized Modules
 from configs.global_configs import hyperparameter_tuning_configs
 from configs.global_configs import model_testing_configs
-from utility_scripts.invoke_final_evaluation import invoke_script
+from error_calculator.final_evaluation import evaluate
 from utility_scripts.ensembling_forecasts import ensembling_forecasts
-
+# from utility_scripts.invoke_final_evaluation import invoke_script # for invoking R
+from utility_scripts.hyperparameter_scripts.hyperparameter_config_reader import read_optimal_hyperparameter_values
+from utility_scripts.persist_optimized_config_results import persist_results
 # import SMAC utilities
 # import the config space and the different types of parameters
-from smac.configspace import ConfigurationSpace
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, UniformIntegerHyperparameter
+from smac.configspace import ConfigurationSpace
 from smac.scenario.scenario import Scenario
 from smac.facade.smac_hpo_facade import SMAC4HPO
-
 # stacking model
 from rnn_architectures.stacking_model import StackingModel
 
 
-LSTM_USE_PEEPHOLES = True
-BIAS = False
+LSTM_USE_PEEPHOLES = True # LSTM with “peephole connections"
+BIAS = False # in tf.keras.layers.dense
+# In TensorFlow's Keras API, the use_bias parameter in the tf.keras.layers.Dense layer is a Boolean 
+# (True/False) parameter that determines whether the layer should include biases or not during the
+# computation. A bias term is an additional parameter in a neural network layer that allows the model
+# to learn an offset that is added to the weighted sum of the inputs.
+
+# Here's a breakdown:
+
+# use_bias=True: If you set use_bias=True, the dense layer will include a bias term in its computation.
+# This means that, for each neuron in the layer, not only are weights applied to the input features, but
+# there is also a learnable bias term added.
+
+# use_bias=False: If you set use_bias=False, the dense layer will not include a bias term. In this case,
+#  only the weighted sum of the input features is considered without an additional bias term.
+
+# Choosing whether to include biases often depends on the specific characteristics of the problem you're
+# working on. In some cases, biases help the model better fit the data by allowing it to learn an offset.
+# In other cases, especially when the data is naturally centered, biases may not be necessary. It's often
+# a matter of experimentation to determine the best configuration for your particular task.
+
 
 # final execution with the optimized config
 def train_model(configs):

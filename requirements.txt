@@ -4,3 +4,4 @@ typeguard
 numpy
 pandas
 smac==0.11.1
+pycausalimpact

@@ -1,0 +1,3 @@
+data,model,input_size,forecast_horizon,lr,smape,training_time,norm_type,activation,n_block,dropout,no_of_series
+calls911_benchmarks,tsmixer,16,7,0.0001,1.4239976406097412,14.472819328308105,B,relu,2,0.05,62
+calls911_benchmarks,CausalImpact,,7,,0.2153043552717791,55.65102553367615,,,,,62
