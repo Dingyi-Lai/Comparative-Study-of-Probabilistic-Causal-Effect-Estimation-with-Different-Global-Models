@@ -24,10 +24,9 @@ input_size = 15 # it's the result of (seasonality_period * 1.25)
 max_forecast_horizon <- 7
 seasonality_period <- 12
 validation <- TRUE
-for (validation in c(FALSE)) { # TRUE, 
+for (validation in c(TRUE, FALSE)) {
   for (idr in 1 : nrow(df_train)) {
     print(idr)
-    idr <- 1
     OUTPUT_PATH = paste(OUTPUT_DIR, "callsMT2_", sep = '/')
       
     OUTPUT_PATH = paste(OUTPUT_PATH, max_forecast_horizon, sep = '')
@@ -45,18 +44,18 @@ for (validation in c(FALSE)) { # TRUE,
     #licence_final_ts <- licence_ts / (licence_ts_mean)
     
     #aggregated_timeseries <- licence_final_ts    
-    
+    time_series_length = length(time_series_data)
+    if (! validation) { # first split the data, then do the standardization and stl decomposition
+      time_series_length = time_series_length - max_forecast_horizon
+      time_series_data = time_series_data[1 : time_series_length]
+    }
+
     time_series_mean <- mean(time_series_data)
     time_series_data <- time_series_data / (time_series_mean)
     
     time_series_log <- log(time_series_data)
-    time_series_length = length(time_series_log)
-      
-    if (! validation) {
-      time_series_length = time_series_length - max_forecast_horizon
-      time_series_log = time_series_log[1 : time_series_length]
-    }
-      # apply stl
+
+    # apply stl
     decomp_result = tryCatch({
       sstl = stl(ts(time_series_log, frequency = seasonality_period), s.window = "period")
       seasonal_vect = as.numeric(sstl$time.series[,1])
@@ -76,11 +75,11 @@ for (validation in c(FALSE)) { # TRUE,
     output_windows = embed(time_series_log[-(1:input_size)], max_forecast_horizon)[, max_forecast_horizon:1]
     # Generating seasonal components to use as exogenous variables.
     seasonality_windows = embed(decomp_result[1:(time_series_length - max_forecast_horizon), 1], input_size)[, input_size:1]
-    seasonality_windows =  seasonality_windows[, c(15)] # c(value of input_size)
-    # Generating the final window values.
-    meanvalues <- rowMeans(input_windows)
-    input_windows <- input_windows - meanvalues
-    output_windows <- output_windows - meanvalues
+    seasonality_windows =  seasonality_windows[, c(input_size)] # c(value of input_size)
+    # # Generating the final window values.
+    # meanvalues <- rowMeans(input_windows)
+    # input_windows <- input_windows - meanvalues
+    # output_windows <- output_windows - meanvalues
     
     if (validation) {
       # Saving into a dataframe with the respective values.
@@ -104,8 +103,8 @@ for (validation in c(FALSE)) { # TRUE,
       #sav_df[, (input_size*2 + 1 + max_forecast_horizon  + 3)] = '|#'
       sav_df[, (input_size + max_forecast_horizon + 5)] = time_series_mean
       #sav_df[, (input_size*2 + 1 + max_forecast_horizon  + 4)] = time_series_mean
-      sav_df[, (input_size + max_forecast_horizon + 6)] = meanvalues
-      #sav_df[, (input_size*2 + 1 + max_forecast_horizon + 5)] = meanvalues
+      # sav_df[, (input_size + max_forecast_horizon + 6)] = meanvalues
+      # #sav_df[, (input_size*2 + 1 + max_forecast_horizon + 5)] = meanvalues
     } else {
       sav_df = matrix(
         NA,

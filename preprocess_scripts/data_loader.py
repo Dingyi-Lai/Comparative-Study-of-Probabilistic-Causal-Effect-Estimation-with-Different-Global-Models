@@ -70,19 +70,9 @@ class TSFDataLoader:
 
     # split train/valid/test
     n = len(df)
-    if self.data.startswith('ETTm'):
-      train_end = 12 * 30 * 24 * 4
-      val_end = train_end + 4 * 30 * 24 * 4
-      test_end = val_end + 4 * 30 * 24 * 4
-    elif self.data.startswith('ETTh'):
-      train_end = 12 * 30 * 24
-      val_end = train_end + 4 * 30 * 24
-      test_end = val_end + 4 * 30 * 24
-    else:
-      test_end = n
-      val_end = test_end-self.pred_len # need to be reconsidered
-      train_end = val_end-self.pred_len
-      
+    test_end = n
+    val_end = test_end-self.pred_len # need to be reconsidered
+    train_end = val_end-self.pred_len
       
     train_df = df[:train_end]
     val_df = df[train_end - self.seq_len : val_end]

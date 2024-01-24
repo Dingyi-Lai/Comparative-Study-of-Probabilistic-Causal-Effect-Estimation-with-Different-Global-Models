@@ -36,6 +36,7 @@ if __name__ == '__main__':
         type=str,
         default='CausalImpact',
         choices=[
+          'DeepProbCP',
           'ArCo',
           'CausalImpact',
           'MQRNN',
@@ -67,7 +68,7 @@ if __name__ == '__main__':
   )
     argument_parser.add_argument(
         '--target',
-        type=str, default='OT', help='target feature in S or MS task'
+        type=str, default='ABINGTON', help='target feature in S or MS task'
   )
     argument_parser.add_argument(
         '--treated',
@@ -126,7 +127,10 @@ if __name__ == '__main__':
         help='number of block for deep architecture',
     )
     argument_parser.add_argument(
-        '--dropout', type=float, default=0.05, help='dropout rate'
+        '--dropout',
+        type=float, 
+        default=0.05, 
+        help='dropout rate'
     )
     argument_parser.add_argument(
         '--norm_type',
@@ -143,24 +147,42 @@ if __name__ == '__main__':
         help='Activation function',
     )
     argument_parser.add_argument(
-        '--kernel_size', type=int, default=4, help='kernel size for CNN'
+        '--kernel_size',
+        type=int, 
+        default=4, 
+        help='kernel size for CNN'
     )
     argument_parser.add_argument(
-        '--temporal_dim', type=int, default=16, help='temporal feature dimension'
+        '--temporal_dim', 
+        type=int, 
+        default=16, 
+        help='temporal feature dimension'
     )
     argument_parser.add_argument(
-        '--hidden_dim', type=int, default=25, help='hidden feature dimension'
+        '--hidden_dim', 
+        type=int, 
+        default=25, 
+        help='hidden feature dimension'
     )
     
     # optimization
     argument_parser.add_argument(
-        '--num_workers', type=int, default=3, help='data loader num workers'
+        '--num_workers', 
+        type=int, 
+        default=3, 
+        help='data loader num workers'
     )
     argument_parser.add_argument(
-        '--train_epochs', type=int, default=100, help='train epochs'
+        '--train_epochs', 
+        type=int, 
+        default=100, 
+        help='train epochs'
     )
     argument_parser.add_argument(
-        '--batch_size', type=int, default=5, help='batch size of input data'
+        '--batch_size', 
+        type=int, 
+        default=5, 
+        help='batch size of input data'
     )
     argument_parser.add_argument(
         '--learning_rate',
@@ -169,12 +191,17 @@ if __name__ == '__main__':
         help='optimizer learning rate',
     )
     argument_parser.add_argument(
-        '--patience', type=int, default=5, help='number of epochs to early stop'
+        '--patience', 
+        type=int, 
+        default=5, 
+        help='number of epochs to early stop'
     )
 
     # save results # need to change!!!
     argument_parser.add_argument(
-        '--result_path', default='results/benchmarks/', help='path to save result'
+        '--result_path', 
+        default='results/', 
+        help='path to save result'
     )
     
     argument_parser.add_argument(
@@ -184,6 +211,10 @@ if __name__ == '__main__':
                 'adagrad'],
         help='The type of the optimizer(cocob/adam/adagrad...). Default is cocob')
     
+    argument_parser.add_argument(
+        '--initial_hyperparameter_values_file',
+        help='The file for the initial hyperparameter configurations')
+
     argument_parser.add_argument(
         '--quantile_range', # not all need to infer quantile distr.
         required=False, 
@@ -199,16 +230,19 @@ if __name__ == '__main__':
         default='mae',
         choices=['mse'],
         help='The evaluation metric like sMAPE. Default is CRPS')
-    argument_parser.add_argument('--without_stl_decomposition', required=False,
+    argument_parser.add_argument('--without_stl_decomposition',
+                                 required=False,
                                  help='Whether not to use stl decomposition(0/1). Default is 0')
 
     # parse the user arguments
     args = argument_parser.parse_args()
 
     if 'tsmixer' in args.model:
-        exp_id = f'{args.dataset_name}_{args.feature_type}_{args.model}_sl{args.input_size}_pl{args.forecast_horizon}_lr{args.learning_rate}_nt{args.norm_type}_{args.activation}_nb{args.n_block}_dp{args.dropout}_fd{args.no_of_series}'
+        exp_id = f'{args.dataset_name}_{args.feature_type}_{args.model}_i{args.input_size}_h{args.forecast_horizon}_lr{args.learning_rate}_nt{args.norm_type}_{args.activation}_nb{args.n_block}_dp{args.dropout}_n{args.no_of_series}'
     elif 'CausalImpact' in args.model:
-        exp_id = f'{args.dataset_name}_{args.model}_pl{args.forecast_horizon}_fd{args.no_of_series}'
+        exp_id = f'{args.dataset_name}_{args.feature_type}_{args.model}_h{args.forecast_horizon}_fd{args.no_of_series}'
+    elif 'DeepProbCP' in args.model:
+        exp_id = f'{args.dataset_name}_{args.feature_type}_{args.model}_i{args.input_size}_h{args.forecast_horizon}_fd{args.no_of_series}'
     else:
         raise ValueError(f'Unknown model type: {args.model}')
 
@@ -300,6 +334,34 @@ if __name__ == '__main__':
         args.dropout = None
         args.input_size = None
         args.learning_rate = None
+    elif 'DeepProbCP' in args.model:
+        start_training_time = time.time()
+
+        end_training_time = time.time()
+        elasped_training_time = end_training_time - start_training_time
+        print(f'Training finished in {elasped_training_time} secconds')
+
+
+        LSTM_USE_PEEPHOLES = True # LSTM with “peephole connections"
+        BIAS = False # in tf.keras.layers.dense
+
+        # define the key word arguments for the different model types
+        model_kwargs = {
+            'use_bias': BIAS,
+            'use_peepholes': LSTM_USE_PEEPHOLES,
+            'input_size': args.input_size,
+            'output_size': args.forecast_horizon,
+            'optimizer': args.optimizer,
+            'quantile_range': args.quantile_range,
+            'evaluation_metric': args.evaluation_metric,
+            'no_of_series': args.no_of_series,
+            'seed': args.seed,
+            'cell_type': 'LSTM',
+            'without_stl_decomposition': 1
+        }
+
+        # select the model type
+        model = StackingModel(**model_kwargs)
     else:
         raise ValueError(f'Model not supported: {args.model}')
 
