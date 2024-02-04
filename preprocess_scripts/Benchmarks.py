@@ -1,6 +1,6 @@
 import pandas as pd
 
-data_raw = pd.read_csv('../datasets/text_data/EMS-MC/calls911_month_full.txt', header=None)
+data_raw = pd.read_csv('../datasets/text_data/calls911/calls911_month_full.txt', header=None)
 
 # Transpose the table
 df_transposed = data_raw.transpose()
@@ -18,4 +18,4 @@ df_transposed.insert(0, 'date', pd.date_range(start='2015-12-01', end='2020-07-0
 columns_to_convert = df_transposed.columns[1:]
 df_transposed[columns_to_convert] = df_transposed[columns_to_convert].astype(float)
 
-df_transposed.to_csv('../datasets/text_data/EMS-MC/calls911_benchmarks.csv', index=False)
+df_transposed.to_csv('../datasets/text_data/calls911/calls911_benchmarks.csv', index=False)

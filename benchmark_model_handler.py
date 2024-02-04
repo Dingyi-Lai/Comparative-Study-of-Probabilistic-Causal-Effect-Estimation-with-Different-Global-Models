@@ -7,10 +7,21 @@ import numpy as np
 import logging
 # Inbuilt or External Modules
 import argparse # customized arguments in .bash
-from preprocess_scripts.data_loader import TSFDataLoader
+from preprocess_scripts.data_loader import DataLoader
 import benchmarks
 import tensorflow as tf
 from causalimpact import CausalImpact
+# imports for training
+import lightning.pytorch as pl
+from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor, ModelCheckpoint
+# import dataset, network to train and metric to optimize
+from pytorch_forecasting import Baseline, TimeSeriesDataSet, TemporalFusionTransformer, QuantileLoss
+from pytorch_forecasting.metrics import MAE, SMAPE, PoissonLoss, QuantileLoss, MASE
+from lightning.pytorch.tuner import Tuner
+import pickle
+from pytorch_forecasting.data import GroupNormalizer
+from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL
 logging.getLogger('tensorflow').setLevel(logging.FATAL)
@@ -243,22 +254,24 @@ if __name__ == '__main__':
         exp_id = f'{args.dataset_name}_{args.feature_type}_{args.model}_h{args.forecast_horizon}_fd{args.no_of_series}'
     elif 'DeepProbCP' in args.model:
         exp_id = f'{args.dataset_name}_{args.feature_type}_{args.model}_i{args.input_size}_h{args.forecast_horizon}_fd{args.no_of_series}'
+    elif 'TFT' in args.model:
+        exp_id = f'{args.dataset_name}_{args.feature_type}_{args.model}_i{args.input_size}_h{args.forecast_horizon}_fd{args.no_of_series}'
     else:
         raise ValueError(f'Unknown model type: {args.model}')
 
     # load datasets
-    data_row = pd.read_csv('./datasets/text_data/EMS-MC/'+args.dataset_name+'.csv')
-    
+    data_row = pd.read_csv('./datasets/text_data/calls911/'+args.dataset_name+'.csv')    
+
     print(args.model)
     # train model
     if 'tsmixer' in args.model:
-        data_loader = TSFDataLoader(
-            args.dataset_name,
-            args.batch_size,
-            args.input_size,
-            args.forecast_horizon,
-            args.feature_type,
-            args.target,
+        data_loader = DataLoader(
+            data=args.dataset_name,
+            batch_size=args.batch_size,
+            seq_len=args.input_size,
+            pred_len=args.forecast_horizon,
+            feature_type=args.feature_type,
+            target=args.target,
         )
         train_data = data_loader.get_train()
         val_data = data_loader.get_val()
@@ -334,34 +347,93 @@ if __name__ == '__main__':
         args.dropout = None
         args.input_size = None
         args.learning_rate = None
-    elif 'DeepProbCP' in args.model:
+    elif 'MQRNN' in args.model:
         start_training_time = time.time()
+        data_loader = DataLoader(
+            data=args.dataset_name,
+            batch_size=args.batch_size,
+            seq_len=args.input_size,
+            pred_len=args.forecast_horizon,
+            feature_type=args.feature_type,
+            target=args.target,
+        )
+        train_data = data_loader.get_train()
+        val_data = data_loader.get_val()
+        test_data = data_loader.get_test()
 
+        build_model = getattr(benchmarks, args.model).build_model
+        model = build_model(
+            input_shape=(args.input_size, data_loader.n_feature),
+            pred_len=args.forecast_horizon,
+            norm_type=args.norm_type,
+            activation=args.activation,
+            dropout=args.dropout,
+            n_block=args.n_block,
+            ff_dim=args.no_of_series,
+            target_slice=data_loader.target_slice,
+        )
         end_training_time = time.time()
         elasped_training_time = end_training_time - start_training_time
         print(f'Training finished in {elasped_training_time} secconds')
 
+    elif 'DeepProbCP' in args.model:
+        start_training_time = time.time()
+        for i in args.treated:
+            data_loader = DataLoader(
+                data=args.dataset_name,
+                without_stl_decomposition=args.without_stl_decomposition,
+                input_size=args.input_size,
+                forecast_horizon=args.forecast_horizon,
+                feature_type=args.feature_type,
+                target=i,
+            )
+            train_data = data_loader.get_train()
+            val_data = data_loader.get_val()
+            test_data = data_loader.get_test()
 
-        LSTM_USE_PEEPHOLES = True # LSTM with “peephole connections"
-        BIAS = False # in tf.keras.layers.dense
+            build_model = getattr(benchmarks, args.model).build_model
+            model = build_model(
+                input_shape=(args.input_size, data_loader.n_feature),
+                pred_len=args.forecast_horizon,
+                norm_type=args.norm_type,
+                activation=args.activation,
+                dropout=args.dropout,
+                n_block=args.n_block,
+                ff_dim=args.no_of_series,
+                target_slice=data_loader.target_slice,
+            )
+            optimizer = tf.keras.optimizers.Adam(learning_rate=args.learning_rate)
+            if args.evaluation_metric=='sMAPE':
+                model.compile(optimizer=optimizer, loss=args.loss, metrics=[sMAPE_tf])
+            else:
+                model.compile(optimizer=optimizer, loss=args.loss, metrics=[args.evaluation_metric])
 
-        # define the key word arguments for the different model types
-        model_kwargs = {
-            'use_bias': BIAS,
-            'use_peepholes': LSTM_USE_PEEPHOLES,
-            'input_size': args.input_size,
-            'output_size': args.forecast_horizon,
-            'optimizer': args.optimizer,
-            'quantile_range': args.quantile_range,
-            'evaluation_metric': args.evaluation_metric,
-            'no_of_series': args.no_of_series,
-            'seed': args.seed,
-            'cell_type': 'LSTM',
-            'without_stl_decomposition': 1
-        }
+            end_training_time = time.time()
+            elasped_training_time = end_training_time - start_training_time
+            print(f'Training finished in {elasped_training_time} secconds')
 
-        # select the model type
-        model = StackingModel(**model_kwargs)
+
+            LSTM_USE_PEEPHOLES = True # LSTM with “peephole connections"
+            BIAS = False # in tf.keras.layers.dense
+
+            # define the key word arguments for the different model types
+            model_kwargs = {
+                'use_bias': BIAS,
+                'use_peepholes': LSTM_USE_PEEPHOLES,
+                'input_size': args.input_size,
+                'output_size': args.forecast_horizon,
+                'optimizer': args.optimizer,
+                'quantile_range': args.quantile_range,
+                'evaluation_metric': args.evaluation_metric,
+                'no_of_series': args.no_of_series,
+                'seed': args.seed,
+                'cell_type': 'LSTM',
+                'without_stl_decomposition': 1
+            }
+
+            # select the model type
+            model = StackingModel(**model_kwargs)
+        
     else:
         raise ValueError(f'Model not supported: {args.model}')
 

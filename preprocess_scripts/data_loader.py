@@ -24,17 +24,20 @@ import tensorflow as tf
 
 
 DATA_DIR = 'gs://time_series_datasets'
-LOCAL_CACHE_DIR = './datasets/text_data/EMS-MC'
+LOCAL_CACHE_DIR = './datasets/text_data/calls911'
 
 
-class TSFDataLoader:
+class DataLoader:
   """Generate data loader from raw data."""
 
   def __init__(
       self, data, batch_size, seq_len, pred_len, feature_type, target='OT'
   ):
     self.data = data
-    self.batch_size = batch_size
+    if batch_size:
+      self.batch_size = batch_size
+    # if without_stl_decomposition:
+    #   self.without_stl_decomposition = without_stl_decomposition
     self.seq_len = seq_len
     self.pred_len = pred_len
     self.feature_type = feature_type

@@ -11,14 +11,14 @@ import numpy as np # for numerical computing
 import os # OS routines
 # import pdb # debugger, but it doesn't work remotely
 import pandas as pd
-
+import pickle
 # Customized Modules
 from configs.global_configs import hyperparameter_tuning_configs
 from configs.global_configs import model_testing_configs
 from error_calculator.final_evaluation import evaluate
 from utility_scripts.ensembling_forecasts import ensembling_forecasts
 # from utility_scripts.invoke_final_evaluation import invoke_script # for invoking R
-from utility_scripts.hyperparameter_scripts.hyperparameter_config_reader import read_optimal_hyperparameter_values
+from utility_scripts.hyperparameter_scripts.hyperparameter_config_reader import read_initial_hyperparameter_values, read_optimal_hyperparameter_values
 from utility_scripts.persist_optimized_config_results import persist_results
 # import SMAC utilities
 # import the config space and the different types of parameters
@@ -149,6 +149,8 @@ def smac():
 
 if __name__ == '__main__':
     argument_parser = argparse.ArgumentParser("Train different forecasting models")
+    argument_parser.add_argument('--dataset_type', required=True,
+                                 help='calls911/sim/...')
     argument_parser.add_argument('--dataset_name', required=True, help='Unique string for the name of the dataset')
     argument_parser.add_argument('--contain_zero_values', required=False,
                                  help='Whether the dataset contains zero values(0/1). Default is 0')
@@ -158,23 +160,23 @@ if __name__ == '__main__':
                                  help='Whether to convert the final forecasts to integers(0/1). Default is 0')
     argument_parser.add_argument('--no_of_series', required=True,
                                  help='The number of series in the dataset')
-    argument_parser.add_argument('--initial_hyperparameter_values_file', required=True,
-                                 help='The file for the initial hyperparameter configurations')
-    argument_parser.add_argument('--binary_train_file_train_mode', required=True,
-                                 help='The tfrecords file for train dataset in the training mode')
-    argument_parser.add_argument('--binary_valid_file_train_mode', required=True,
-                                 help='The tfrecords file for validation dataset in the training mode')
-    argument_parser.add_argument('--binary_train_file_test_mode', required=True,
-                                 help='The tfrecords file for train dataset in the testing mode')
-    argument_parser.add_argument('--binary_test_file_test_mode', required=True,
-                                 help='The tfrecords file for test dataset in the testing mode')
-    argument_parser.add_argument('--txt_test_file', required=True, help='The txt file for test dataset')
-    argument_parser.add_argument('--actual_results_file', required=True, help='The txt file of the actual results')
-    argument_parser.add_argument('--original_data_file', required=True, help='The txt file of the original dataset')
+    # argument_parser.add_argument('--initial_hyperparameter_values_file', required=True,
+    #                              help='The file for the initial hyperparameter configurations')
+    # argument_parser.add_argument('--binary_train_file_train_mode', required=True,
+    #                              help='The tfrecords file for train dataset in the training mode')
+    # argument_parser.add_argument('--binary_valid_file_train_mode', required=True,
+    #                              help='The tfrecords file for validation dataset in the training mode')
+    # argument_parser.add_argument('--binary_train_file_test_mode', required=True,
+    #                              help='The tfrecords file for train dataset in the testing mode')
+    # argument_parser.add_argument('--binary_test_file_test_mode', required=True,
+    #                              help='The tfrecords file for test dataset in the testing mode')
+    # argument_parser.add_argument('--txt_test_file', required=True, help='The txt file for test dataset')
+    # argument_parser.add_argument('--actual_results_file', required=True, help='The txt file of the actual results')
+    # argument_parser.add_argument('--original_data_file', required=True, help='The txt file of the original dataset')
     argument_parser.add_argument('--cell_type', required=False,
                                  help='The cell type of the RNN(LSTM/GRU/RNN). Default is LSTM')
-    argument_parser.add_argument('--input_size', required=False,
-                                 help='The input size of the moving window. Default is 0')
+    # argument_parser.add_argument('--input_size', required=False,
+    #                              help='The input size of the moving window. Default is 0')
     argument_parser.add_argument('--seasonality_period', required=True, help='The seasonality period of the time series')
     argument_parser.add_argument('--forecast_horizon', required=True, help='The forecast horizon of the dataset')
     argument_parser.add_argument('--optimizer', required=False, help='The type of the optimizer(cocob/adam/adagrad...). Default is cocob')
@@ -191,14 +193,7 @@ if __name__ == '__main__':
     # arguments with no default values
     dataset_name = args.dataset_name
     no_of_series = int(args.no_of_series)
-    initial_hyperparameter_values_file = args.initial_hyperparameter_values_file
-    binary_train_file_path_train_mode = args.binary_train_file_train_mode
-    binary_validation_file_path_train_mode = args.binary_valid_file_train_mode
-    binary_test_file_path_test_mode = args.binary_test_file_test_mode
     output_size = int(args.forecast_horizon)
-    txt_test_file_path = args.txt_test_file
-    actual_results_file_path = args.actual_results_file
-    original_data_file_path = args.original_data_file
     seasonality_period = int(args.seasonality_period)
     seed = 1234
 
@@ -207,11 +202,6 @@ if __name__ == '__main__':
         contain_zero_values = bool(int(args.contain_zero_values))
     else:
         contain_zero_values = False
-
-    if args.input_size:
-        input_size = int(args.input_size)
-    else:
-        input_size = 0
 
     if args.optimizer:
         optimizer = args.optimizer
@@ -259,8 +249,29 @@ if __name__ == '__main__':
     model_identifier = dataset_name + "_" + cell_type + "cell" + "_" +  optimizer + "_" + \
                        stl_decomposition_identifier
     print("Model Training Started for {}".format(model_identifier))
-
-
+    
+    input_size = int(seasonality_period * 1.25) + 1
+    initial_hyperparameter_values_file = "configs/initial_hyperparameter_values/" + \
+        dataset_name + "_" + cell_type + "cell" + "_" +  optimizer
+    binary_train_file_path_train_mode = "datasets/binary_data/" + args.dataset_type +  \
+        "/moving_window/" + dataset_name + "_train_" + args.forecast_horizon + "_" +  \
+            str(input_size-1) + ".tfrecords"
+    binary_validation_file_path_train_mode = "datasets/binary_data/" + args.dataset_type +  \
+        "/moving_window/" + dataset_name + "_validation_" + args.forecast_horizon + "_" +  \
+            str(input_size-1) + ".tfrecords"
+    binary_train_file_test_mode = "datasets/binary_data/" + args.dataset_type +  \
+        "/moving_window/" + dataset_name + "_validation_" + args.forecast_horizon + "_" +  \
+            str(input_size-1) + ".tfrecords"
+    binary_test_file_path_test_mode = "datasets/binary_data/" + args.dataset_type +  \
+        "/moving_window/" + dataset_name + "_test_" + args.forecast_horizon + "_" +  \
+            str(input_size-1) + ".tfrecords"
+    txt_test_file_path = "datasets/text_data/" + args.dataset_type +  \
+        "/moving_window/" + dataset_name + "_test_" + args.forecast_horizon + "_" +  \
+            str(input_size-1) + ".txt"
+    actual_results_file_path = "datasets/text_data/" + args.dataset_type +  \
+        "/" + dataset_name + "_test_actual.csv"
+    original_data_file_path = "datasets/text_data/" + args.dataset_type +  \
+        "/" + dataset_name + "_train.csv"
     # define the key word arguments for the different model types
     model_kwargs = {
         'use_bias': BIAS,
@@ -285,6 +296,18 @@ if __name__ == '__main__':
     # select the model type
     model = StackingModel(**model_kwargs)
 
+    # delete model if existing
+    for file in glob.glob("./results/nn_model_results/rnn/"+model_identifier+"_model.pkl"):
+        os.remove(file)
+
+    # save model
+    with open("./results/nn_model_results/rnn/"+model_identifier+"_model.pkl", "wb") as fout:
+        pickle.dump(model, fout)
+    
+    # # Load the study from the saved file
+    # with open("./results/nn_model_results/rnn/"+model_identifier+"_model.pkl", "rb") as fin:
+    #     model = pickle.load(fin)
+    
     # delete hyperparameter configs files if existing
     for file in glob.glob(hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + model_identifier + "*"):
         os.remove(file)
@@ -297,14 +320,14 @@ if __name__ == '__main__':
     # persist the optimized configuration to a file
     persist_results(optimized_configuration, hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + '/' + model_identifier + '.txt')
 
+    # # not training again but just read in
+    # optimized_configuration = read_optimal_hyperparameter_values("./results/nn_model_results/rnn/optimized_configurations/" + model_identifier + ".txt")
+    # print(optimized_configuration)
+
     # delete the forecast files if existing
     for file in glob.glob(
             model_testing_configs.FORECASTS_DIRECTORY + model_identifier + "*"):
         os.remove(file)
-
-    # # not training again but just read in
-    # optimized_configuration = read_optimal_hyperparameter_values("./results/nn_model_results/rnn/optimized_configurations/" + model_identifier + ".txt")
-    # print(optimized_configuration)
 
     print("tuning finished")
     T2 = time.time()
@@ -332,11 +355,11 @@ if __name__ == '__main__':
     ensembled_forecasts = ensembling_forecasts(model_identifier, model_testing_configs.FORECASTS_DIRECTORY,
                          model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY,quantile_range)
 
-    # # not training again but just read in
-    # ensembled_forecasts = {}
-    # for q in quantile_range:
-    #     ensembled_forecasts[q] = pd.read_csv(model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY +\
-    #                                           model_identifier + "_" + str(q) +".txt",header=None)
+    # not training again but just read in
+    ensembled_forecasts = {}
+    for q in quantile_range:
+        ensembled_forecasts[q] = pd.read_csv(model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY +\
+                                              model_identifier + "_" + str(q) +".txt",header=None)
 
     print("ensembled finished")
     T4 = time.time()

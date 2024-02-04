@@ -8,9 +8,9 @@ library(rstatix)
 library(ggpubr)
 
 # Reading the original and forecasting datasets
-observed_data_total <- read.csv(file = "./datasets/text_data/EMS-MC/calls911_month_full.txt", sep = ',', header = FALSE)
-train_ds <- read.csv(file = "./datasets/text_data/EMS-MC/callsMT2_dataset.txt", header = FALSE)
-test_ds <- read.csv(file = "./datasets/text_data/EMS-MC/callsMT2_results.txt", sep = ';', header = FALSE)
+observed_data_total <- read.csv(file = "./datasets/text_data/calls911/calls911_month_full.txt", sep = ',', header = FALSE)
+train_ds <- read.csv(file = "./datasets/text_data/calls911/callsMT2_dataset.txt", header = FALSE)
+test_ds <- read.csv(file = "./datasets/text_data/calls911/callsMT2_results.txt", sep = ';', header = FALSE)
 forecast_total <- read.csv(file = "./results/nn_model_results/rnn/processed_ensemble_forecasts/callsMT215_without_stl_LSTMcell_cocob_without_stl_decomposition", sep = ',', header = FALSE)
 
 # Adjusting layouts to plot

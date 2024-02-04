@@ -1,7 +1,7 @@
 # final evaluation ETS
 
 emsMONT_forecasts <- read.csv(file = "./results/ets_forecasts/emsMONT.txt", sep = ',', header = FALSE)
-actual_results_df <- read.csv(file = "./datasets/text_data/EMS-MC/callsMT2_results.txt", sep = ';', header = FALSE)
+actual_results_df <- read.csv(file = "./datasets/text_data/calls911/callsMT2_results.txt", sep = ';', header = FALSE)
 actual_results_df <- actual_results_df[,-1]
 
 
@@ -17,7 +17,7 @@ mean_SMAPE
 median_SMAPE
 std_SMAPE
 
-train_ds <- read.csv("./datasets/text_data/EMS-MC/calls911_month_train2.txt", sep = ',', header = FALSE)
+train_ds <- read.csv("./datasets/text_data/calls911/calls911_month_train2.txt", sep = ',', header = FALSE)
 time_series_wise_SMAPE_B <- time_series_wise_SMAPE
 time_series_wise_SMAPE_B <- cbind(train_ds[,1],time_series_wise_SMAPE_B)
 time_series_wise_SMAPE_C <- t(time_series_wise_SMAPE_B)

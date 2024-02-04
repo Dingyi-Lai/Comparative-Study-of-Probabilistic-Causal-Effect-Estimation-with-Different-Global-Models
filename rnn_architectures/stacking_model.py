@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 from quantile_utils.CRPS_QL import pinball_loss, PinballLoss
 import tensorflow as tf
+from external_packages.peephole_lstm_cell import PeepholeLSTMCell
 import tensorflow.keras.backend as K
 # from typeguard import typechecked
 # import tensorflow_addons as tfa # resource limits
@@ -145,7 +146,7 @@ class StackingModel:
         # lstm stack
         next_input = masked_output
         for i in range(num_hidden_layers):
-            lstm_output = tf.keras.layers.RNN(tf.keras.experimental.PeepholeLSTMCell(cell_dimension, kernel_initializer=initializer), return_sequences=True) (next_input)
+            lstm_output = tf.keras.layers.RNN(PeepholeLSTMCell(cell_dimension, kernel_initializer=initializer), return_sequences=True) (next_input)
             next_input = lstm_output
 
         dense_layer_output = tf.keras.layers.Dense(self.__output_size, use_bias=self.__use_bias, kernel_initializer=initializer) (masked_output)

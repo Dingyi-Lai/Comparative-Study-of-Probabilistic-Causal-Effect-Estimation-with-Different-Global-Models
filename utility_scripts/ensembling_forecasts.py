@@ -27,6 +27,7 @@ def ensembling_forecasts(model_identifier, input_path, output_path, qr):
         # write the ensembled forecasts to a file
         output_file = output_path + model_identifier + "_" + str(q) +".txt"
         np.savetxt(output_file, ensembled_forecasts[q], delimiter = ',')
+        print(ensembled_forecasts)
     return ensembled_forecasts
 
 

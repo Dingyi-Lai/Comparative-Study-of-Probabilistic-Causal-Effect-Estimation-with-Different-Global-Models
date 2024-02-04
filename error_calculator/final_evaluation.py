@@ -64,8 +64,16 @@ def evaluate(evaluate_args, ensembled_forecasts):
     CRPS_file_cs = processed_forecasts_directory + CRPS_file_name_cs
 
     # Actual results file name
-    actual_results = pd.read_csv(actual_results_file_name, sep=';', header=None)
-
+    # print(actual_results)
+    actual_results = pd.read_csv(actual_results_file_name)
+    # print(actual_results)
+    # print(" ")
+    if "series_id" in actual_results.columns:
+        actual_results = actual_results.pivot(index='series_id', columns='time')['value']
+    else:
+        actual_results = actual_results.iloc[:,1:]
+    # print(actual_results)
+    # print(" ")
     # Text test data file name
     txt_test_df = pd.read_csv(txt_test_file_name, sep=' ', header=None)
 
@@ -77,8 +85,6 @@ def evaluate(evaluate_args, ensembled_forecasts):
 
     # Persisting the final forecasts
     processed_forecasts_file = processed_forecasts_directory + errors_file_name
-
-    actual_results = actual_results.drop(columns=0)
 
     # take the uniqueindexes
     value = list(txt_test_df[0])
@@ -97,7 +103,6 @@ def evaluate(evaluate_args, ensembled_forecasts):
         # Perform spline regression for each time series
         num_time_series = v.shape[0]
         for i in range(num_time_series):
-
             # post-processing
             one_ts_forecasts = v.iloc[i].values
             finalindex = uniqueindexes[i]
@@ -123,8 +128,14 @@ def evaluate(evaluate_args, ensembled_forecasts):
             
             if k == 0.5:
                 # np.diff(np.array(original_dataset[i]), lag=seasonality_period, differences=1))
-                original_values = list(map(float, original_dataset[i]))
+                # original_values = list(map(float, original_dataset[i]))
+                # print(original_dataset)
+                original_dataset_df = pd.DataFrame(original_dataset)
+                original_values = list(original_dataset_df.index+1)
                 lagged_diff = [original_values[i] - original_values[i - seasonality_period] for i in range(seasonality_period, len(original_values))]
+                # print(np.array(actual_results_df.iloc[i]))
+                # print(" ")
+                # print(converted_forecasts_df)
                 mase_vector.append(mase_greybox(np.array(actual_results_df.iloc[i]), converted_forecasts_df, np.mean(np.abs(lagged_diff))))
 
         if k == 0.5:

@@ -7,7 +7,7 @@
 library(forecast)
 
 # read the data
-emsMONT_dataset <- read.csv(file = "./datasets/text_data/EMS-MC/callsMT2_dataset.txt", sep = ',', header = FALSE) # data with training period from Dec-15 to Dec-19
+emsMONT_dataset <- read.csv(file = "./datasets/text_data/calls911/callsMT2_dataset.txt", sep = ',', header = FALSE) # data with training period from Dec-15 to Dec-19
 emsMONT_dataset <- as.matrix(emsMONT_dataset)
 
 output_file_name = "./results/arima_forecasts/emsMONT.txt"

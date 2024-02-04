@@ -28,15 +28,15 @@ We have used two datasets for the experiments of this paper:
 
 2) The 911 Emergency Calls Dataset for Montgomery County --> an opened dataset from Kaggle containing the 911 emergency calls from Montgomery County (Pennsylvania-USA) from December-2015 to July-2020, where the raw data can be retrieved from this [link](https://www.kaggle.com/mchirico/montcoalert).
 
-In the `preprocess_scripts/EMS-MC` directory, there are some wrangling and pre-processing script codes to adjust this Dataset 2. First, the `calls911_wrangling_code.R` file wrangles the raw data retrived from the link mentioned previously. Then, the `calls911_to_forecasting_code.R` file adjusts the time series from this dataset for the forecasting task. Finally, the files `adjustOrigTestDtSet.R` and `adjustOrigTraintDtSet.R`, execute some additional steps to format the training and testing datasets to be used for the DeepCPNet framework modelling, in the next steps that will be described in the sequence.
+In the `preprocess_scripts/calls911` directory, there are some wrangling and pre-processing script codes to adjust this Dataset 2. First, the `calls911_wrangling_code.R` file wrangles the raw data retrived from the link mentioned previously. Then, the `calls911_to_forecasting_code.R` file adjusts the time series from this dataset for the forecasting task. Finally, the files `adjustOrigTestDtSet.R` and `adjustOrigTraintDtSet.R`, execute some additional steps to format the training and testing datasets to be used for the DeepCPNet framework modelling, in the next steps that will be described in the sequence.
 
 In the `preprocess_scripts/EMS` directory we have the same files `adjustOrigTestDtSet.R` and `adjustOrigTraintDtSet.R` to adjust Dataset 1 for the next preprocessing steps as described in the next section.
 
 #### Create the text files of the data ####
 
-From the data reserved to be trained, three files need to be created for every model, one per training, validation and testing. Example preprocessing R scripts to create text data files (`mean_stl_train_validation_....R` and `mean_stl_test_....R` files) are in `preprocess_scripts/EMS (or EMS-MC)/moving_window/without_stl_decomposition` directories.
+From the data reserved to be trained, three files need to be created for every model, one per training, validation and testing. Example preprocessing R scripts to create text data files (`mean_stl_train_validation_....R` and `mean_stl_test_....R` files) are in `preprocess_scripts/EMS (or calls911)/moving_window/without_stl_decomposition` directories.
 
-Sample Record of validation file in moving window format without STL Decomposition: (in `datasets/text_data/EMS-MC/moving_window/without_stl_decomposition` directory):
+Sample Record of validation file in moving window format without STL Decomposition: (in `datasets/text_data/calls911/moving_window/without_stl_decomposition` directory):
 
 `1|i 0.0353890753105493 -0.0169499558775499 -0.0447295199846256 0.0870397576464977 -0.00334430382177138 -0.282057706290792 -0.0447295199846256 0.123407401817373 -0.0307432780098858 0.169927417452265 -0.0589141549765821 -0.117754654999516 -0.164274670634408 0.0746172376479405 0.2464674945746 0.0620384554410805 |o -0.164274670634408 0.214379180023099 -0.00334430382177138 0.192400273304324 -0.21306483480384 0.0492994296636507 0.225190096127315 |# 80.3469387755102 -0.0789445958071699`
 

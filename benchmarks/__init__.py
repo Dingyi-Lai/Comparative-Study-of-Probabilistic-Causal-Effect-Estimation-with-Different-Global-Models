@@ -17,3 +17,5 @@
 
 import benchmarks.tsmixer
 import benchmarks.tsmixer_rev_in
+import benchmarks.mqrnn
+# import benchmarks.deepprobcp
