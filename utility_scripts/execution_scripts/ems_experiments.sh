@@ -56,9 +56,10 @@ python ./generic_model_handler.py --dataset_type sim --dataset_name sim_500_60_l
 python ./generic_model_handler.py --dataset_type sim --dataset_name sim_500_60_nl_he --contain_zero_values 0 --forecast_horizon 12 --no_of_series 500 --optimizer cocob --seasonality_period 12 --address_near_zero_instability 0 --without_stl_decomposition 1 &
 python ./generic_model_handler.py --dataset_type sim --dataset_name sim_500_60_nl_ho --contain_zero_values 0 --forecast_horizon 12 --no_of_series 500 --optimizer cocob --seasonality_period 12 --address_near_zero_instability 0 --without_stl_decomposition 1 &
 python ./generic_model_handler.py --dataset_type sim --dataset_name sim_500_222_l_he --contain_zero_values 0 --forecast_horizon 12 --no_of_series 500 --optimizer cocob --seasonality_period 12 --address_near_zero_instability 0 --without_stl_decomposition 1 &
-python ./generic_model_handler.py --dataset_type sim --dataset_name sim_500_222_l_ho --contain_zero_values 0 --forecast_horizon 12 --no_of_series 500 --optimizer cocob --seasonality_period 12 --address_near_zero_instability 0 --without_stl_decomposition 1 &
 python ./generic_model_handler.py --dataset_type sim --dataset_name sim_500_222_nl_he --contain_zero_values 0 --forecast_horizon 12 --no_of_series 500 --optimizer cocob --seasonality_period 12 --address_near_zero_instability 0 --without_stl_decomposition 1 &
 python ./generic_model_handler.py --dataset_type sim --dataset_name sim_500_222_nl_ho --contain_zero_values 0 --forecast_horizon 12 --no_of_series 500 --optimizer cocob --seasonality_period 12 --address_near_zero_instability 0 --without_stl_decomposition 1 &
+python ./generic_model_handler.py --dataset_type sim --dataset_name sim_500_222_l_ho --contain_zero_values 0 --forecast_horizon 12 --no_of_series 500 --optimizer cocob --seasonality_period 12 --address_near_zero_instability 0 --without_stl_decomposition 1 &
+
 
 
 python ./benchmark_model_handler.py --model DeepProbCP --dataset_name calls911_benchmarks --feature_type 'MS' --initial_hyperparameter_values_file configs/initial_hyperparameter_values/ems_DeepProbCP_cocob --no_of_series 62 --input_size 15 --forecast_horizon 7 --optimizer cocob --seasonality_period 12 --original_data_file datasets/text_data/calls911/callsMT2_dataset.txt --address_near_zero_instability 0 --without_stl_decomposition 1 &
