@@ -252,7 +252,7 @@ if __name__ == '__main__':
     
     input_size = int(seasonality_period * 1.25) + 1
     initial_hyperparameter_values_file = "configs/initial_hyperparameter_values/" + \
-        dataset_name + "_" + cell_type + "cell" + "_" +  optimizer
+        args.dataset_type + "_" + cell_type + "cell" + "_" +  optimizer
     binary_train_file_path_train_mode = "datasets/binary_data/" + args.dataset_type +  \
         "/moving_window/" + dataset_name + "_train_" + args.forecast_horizon + "_" +  \
             str(input_size-1) + ".tfrecords"
@@ -355,11 +355,11 @@ if __name__ == '__main__':
     ensembled_forecasts = ensembling_forecasts(model_identifier, model_testing_configs.FORECASTS_DIRECTORY,
                          model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY,quantile_range)
 
-    # not training again but just read in
-    ensembled_forecasts = {}
-    for q in quantile_range:
-        ensembled_forecasts[q] = pd.read_csv(model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY +\
-                                              model_identifier + "_" + str(q) +".txt",header=None)
+    # # not training again but just read in
+    # ensembled_forecasts = {}
+    # for q in quantile_range:
+    #     ensembled_forecasts[q] = pd.read_csv(model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY +\
+    #                                           model_identifier + "_" + str(q) +".txt",header=None)
 
     print("ensembled finished")
     T4 = time.time()
