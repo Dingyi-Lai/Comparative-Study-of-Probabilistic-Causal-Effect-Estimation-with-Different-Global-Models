@@ -11,17 +11,17 @@ from preprocess_scripts.data_loader import DataLoader
 import benchmarks
 import tensorflow as tf
 from causalimpact import CausalImpact
-# imports for training
-import lightning.pytorch as pl
-from lightning.pytorch.loggers import TensorBoardLogger
-from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor, ModelCheckpoint
-# import dataset, network to train and metric to optimize
-from pytorch_forecasting import Baseline, TimeSeriesDataSet, TemporalFusionTransformer, QuantileLoss
-from pytorch_forecasting.metrics import MAE, SMAPE, PoissonLoss, QuantileLoss, MASE
-from lightning.pytorch.tuner import Tuner
-import pickle
-from pytorch_forecasting.data import GroupNormalizer
-from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
+# # imports for training
+# import lightning.pytorch as pl
+# from lightning.pytorch.loggers import TensorBoardLogger
+# from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor, ModelCheckpoint
+# # import dataset, network to train and metric to optimize
+# from pytorch_forecasting import Baseline, TimeSeriesDataSet, TemporalFusionTransformer, QuantileLoss
+# from pytorch_forecasting.metrics import MAE, SMAPE, PoissonLoss, QuantileLoss, MASE
+# from lightning.pytorch.tuner import Tuner
+# import pickle
+# from pytorch_forecasting.data import GroupNormalizer
+# from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL
 logging.getLogger('tensorflow').setLevel(logging.FATAL)
@@ -62,6 +62,10 @@ if __name__ == '__main__':
       ],
         help='model name, options: [tsmixer, tsmixer_rev_in]',
     )
+    argument_parser.add_argument('--dataset_type',
+                                 default='calls911',
+                                 required=True,
+                                 help='calls911/sim/...')
     argument_parser.add_argument(
         '--dataset_name',
         default='calls911_benchmarks',
@@ -120,11 +124,11 @@ if __name__ == '__main__':
         default=62,
         help='The number of series in the dataset')
     
-    argument_parser.add_argument(
-        '--input_size',
-        required=False, # seq_len in txmiser
-        default=16,
-        help='The input size of the moving window. Default is 0')
+    # argument_parser.add_argument(
+    #     '--input_size',
+    #     required=False, # seq_len in txmiser
+    #     default=16,
+    #     help='The input size of the moving window. Default is 0')
     argument_parser.add_argument( # pred_len in txmiser
         '--forecast_horizon',
         default=7,
@@ -211,7 +215,7 @@ if __name__ == '__main__':
     # save results # need to change!!!
     argument_parser.add_argument(
         '--result_path', 
-        default='results/', 
+        default='results/benchmarks/', 
         help='path to save result'
     )
     
@@ -230,24 +234,25 @@ if __name__ == '__main__':
         '--quantile_range', # not all need to infer quantile distr.
         required=False, 
         help='The range of the quantile for quantile forecasting. Default is np.linspace(0, 1, 21)')
-    argument_parser.add_argument(
-        '--evaluation_metric',
-        default='sMAPE',
-        choices=['mae',
-                'mse'],
-        help='The evaluation metric like sMAPE. Default is CRPS')
+    # argument_parser.add_argument(
+    #     '--evaluation_metric',
+    #     default='sMAPE',
+    #     choices=['mae',
+    #             'mse'],
+    #     help='The evaluation metric like sMAPE. Default is CRPS')
     argument_parser.add_argument(
         '--loss',
         default='mae',
         choices=['mse'],
         help='The evaluation metric like sMAPE. Default is CRPS')
-    argument_parser.add_argument('--without_stl_decomposition',
-                                 required=False,
-                                 help='Whether not to use stl decomposition(0/1). Default is 0')
+    # argument_parser.add_argument('--without_stl_decomposition',
+    #                              required=False,
+    #                              help='Whether not to use stl decomposition(0/1). Default is 0')
+    argument_parser.add_argument('--seasonality_period', required=True, help='The seasonality period of the time series')
 
     # parse the user arguments
     args = argument_parser.parse_args()
-
+    input_size = int(args.seasonality_period * 1.25) + 1
     if 'tsmixer' in args.model:
         exp_id = f'{args.dataset_name}_{args.feature_type}_{args.model}_i{args.input_size}_h{args.forecast_horizon}_lr{args.learning_rate}_nt{args.norm_type}_{args.activation}_nb{args.n_block}_dp{args.dropout}_n{args.no_of_series}'
     elif 'CausalImpact' in args.model:
@@ -260,7 +265,7 @@ if __name__ == '__main__':
         raise ValueError(f'Unknown model type: {args.model}')
 
     # load datasets
-    data_row = pd.read_csv('./datasets/text_data/calls911/'+args.dataset_name+'.csv')    
+    data_row = pd.read_csv('./datasets/text_data/' + args.dataset_type + '/' +args.dataset_name+'.csv')    
 
     print(args.model)
     # train model
@@ -325,19 +330,27 @@ if __name__ == '__main__':
                 os.remove(f)
     elif 'CausalImpact' in args.model:
         start_training_time = time.time()
-        smape_values_per_series = []
-        for i in args.treated:
-            ci = CausalImpact(data_row.loc[:,[i]+args.control],
-                 [0,len(data_row['date'])-args.forecast_horizon],
-                 [len(data_row['date'])-args.forecast_horizon+1,
+        # smape_values_per_series = []
+        for i in data_row.columns:
+            ci = CausalImpact(data_row.loc[:,[i] + [col for col in \
+                    data_row.columns if col != i]],
+                 [0,len(data_row['date'])-args.forecast_horizon-1],
+                 [len(data_row['date'])-args.forecast_horizon,
                   len(data_row['date'])-1])
             # evaluate the model
-            y_pred = ci.inferences.loc[(len(data_row['date'])-args.forecast_horizon+1):(len(data_row['date'])-1),'preds']
+            y_pred = ci.inferences.loc[(len(data_row['date'])-args.forecast_horizon):(len(data_row['date'])-1),'preds']
             y_true = ci.post_data.iloc[:,0]
-            smape_values = (np.abs(y_pred - y_true) /
-                    (np.abs(y_pred) + np.abs(y_true))) * 2
-            smape_values_per_series.append(np.mean(smape_values))
-        test_smape = np.mean(smape_values_per_series)
+            # write the ensembled forecasts to a file
+        output_file = output_path + model_identifier + "_" + str(q) +".txt"
+        np.savetxt(output_file, ensembled_forecasts[q], delimiter = ',')
+        #     # smape
+        #     smape_values = (np.abs(y_pred - y_true) /
+        #             (np.abs(y_pred) + np.abs(y_true))) * 2
+        #     smape_values_per_series.append(np.mean(smape_values))
+
+        #     # mase
+        #     lagged_diff = [PY[i] - PY[i - 2] for i in range(2, len(PY))]
+        # test_smape = np.mean(smape_values_per_series)
         end_training_time = time.time()
         elasped_training_time = end_training_time - start_training_time
         print(f'Training finished in {elasped_training_time} secconds')
@@ -447,7 +460,8 @@ if __name__ == '__main__':
         'forecast_horizon': [args.forecast_horizon],
         'lr': [args.learning_rate],
         # 'mae': [test_result[0]],
-        'smape': [test_smape],
+        # 'smape': [test_smape],
+        # 'smape': [test_mase],
         # 'val_mae': [history.history['val_loss'][best_epoch]],
         # 'val_smape': [history.history['val_smape'][best_epoch]],
         # 'train_mae': [history.history['loss'][best_epoch]],
@@ -461,7 +475,7 @@ if __name__ == '__main__':
     }
 
     df = pd.DataFrame(data)
-    if os.path.exists(args.result_path+'result.csv'):
-        df.to_csv(args.result_path+'result.csv', mode='a', index=False, header=False)
+    if os.path.exists(args.result_path+'result'+args.model+'.csv'):
+        df.to_csv(args.result_path+'result'+args.model+'.csv', mode='a', index=False, header=False)
     else:
-        df.to_csv(args.result_path+'result.csv', mode='w', index=False, header=True)
+        df.to_csv(args.result_path+'result'+args.model+'.csv', mode='w', index=False, header=True)

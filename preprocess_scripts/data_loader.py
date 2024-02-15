@@ -24,7 +24,8 @@ import tensorflow as tf
 
 
 DATA_DIR = 'gs://time_series_datasets'
-LOCAL_CACHE_DIR = './datasets/text_data/calls911'
+# LOCAL_CACHE_DIR = './datasets/text_data/calls911'
+LOCAL_CACHE_DIR = './datasets/text_data/sim'
 
 
 class DataLoader:
@@ -64,7 +65,8 @@ class DataLoader:
 
     # S: univariate-univariate, M: multivariate-multivariate, MS:
     # multivariate-univariate
-    df = df_raw.set_index('date')
+    # df = df_raw.set_index('date')
+    df = df_raw
     if self.feature_type == 'S':
       df = df[[self.target]]
     elif self.feature_type == 'MS':

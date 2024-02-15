@@ -9,6 +9,10 @@ import pickle
 #     sum_term = np.maximum(comparator, (np.abs(forecasts) + np.abs(actual) + epsilon))
 #     return 2 * np.abs(forecasts - actual) / sum_term
 
+def custom_sort_key(s):
+    parts = s.split('_')
+    return int(parts[1])
+
 def mase_greybox(holdout, forecast, scale):
     """
     Calculates Mean Absolute Scaled Error as in Hyndman & Koehler, 2006.
@@ -70,8 +74,15 @@ def evaluate(evaluate_args, ensembled_forecasts):
     # print(" ")
     if "series_id" in actual_results.columns:
         actual_results = actual_results.pivot(index='series_id', columns='time')['value']
+        original_dataset = pd.read_csv(original_data_file_name)
+        original_dataset = original_dataset.pivot(index='series_id', columns='time')['value']
+        # Use the custom sorting function as the key
+        actual_results = actual_results.loc[sorted(actual_results.index, key=custom_sort_key),:]
+        original_dataset = original_dataset.loc[sorted(original_dataset.index, key=custom_sort_key),:]
     else:
         actual_results = actual_results.iloc[:,1:]
+        original_dataset = pd.read_csv(original_data_file_name)
+
     # print(actual_results)
     # print(" ")
     # Text test data file name
@@ -79,9 +90,10 @@ def evaluate(evaluate_args, ensembled_forecasts):
 
     # RNN forecasts file name as one of the argument which is ensembled_forecasts
 
-    # Reading the original data to calculate the MASE errors
-    with open(original_data_file_name, 'r') as file:
-        original_dataset = [line.strip().split(',') for line in file]
+    # # Reading the original data to calculate the MASE errors
+    # with open(original_data_file_name, 'r') as file:
+    #     original_dataset = [line.strip().split(',') for line in file]
+    
 
     # Persisting the final forecasts
     processed_forecasts_file = processed_forecasts_directory + errors_file_name
@@ -130,9 +142,13 @@ def evaluate(evaluate_args, ensembled_forecasts):
                 # np.diff(np.array(original_dataset[i]), lag=seasonality_period, differences=1))
                 # original_values = list(map(float, original_dataset[i]))
                 # print(original_dataset)
-                original_dataset_df = pd.DataFrame(original_dataset)
-                original_values = list(original_dataset_df.index+1)
-                lagged_diff = [original_values[i] - original_values[i - seasonality_period] for i in range(seasonality_period, len(original_values))]
+                # original_dataset_df = pd.DataFrame(original_dataset)
+                # original_values = list(original_dataset_df.index+1)
+                # print(original_dataset)
+                lagged_diff = [original_dataset.iloc[i,j] - \
+                               original_dataset.iloc[i,j - \
+                                seasonality_period] for j in \
+                                range(seasonality_period, len(original_dataset.columns))]
                 # print(np.array(actual_results_df.iloc[i]))
                 # print(" ")
                 # print(converted_forecasts_df)
