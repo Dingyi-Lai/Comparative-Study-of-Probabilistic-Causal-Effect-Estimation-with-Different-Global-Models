@@ -15,6 +15,7 @@ library(dplyr)
 # Read the data
 # setwd("datasets/text_data/sim/scenario_df.csv")
 scenario_df <- read.csv("datasets/text_data/sim/scenario_df.csv")
+scenario_df_true <- read.csv("datasets/text_data/sim/scenario_df_true.csv")
 
 # Defining output directory, input window size, forecasting horizon, and seasonality respectively.
 OUTPUT_DIR = "./datasets/text_data/sim/moving_window/"
@@ -45,27 +46,15 @@ input_size <- seasonality_period * 1.25 # 15
 for (length in time_series_lengths) {
   for (amount in amount_of_time_series) {
     for (ln in dgp) {
-        if(ln == "l"){
-            ln_original = "linear"
-        }
-        if(ln == "nl"){
-            ln_original = "nonlinear"
-        }
       for (te in te_intervention){ 
         
         # train data
         nam <- paste("sim", amount, length, ln, te, "train", sep = "_")
-        if(te == "ho"){
-            te_original = "homogeneous"
-        }
-        if(te == "he"){
-            te_original = "heterogeneous"
-        }
         data_train <- scenario_df %>%
             filter(time_series_length == length & 
             amount_of_time_series == amount &
-            dgp == ln_original &
-            te_intervention == te_original &
+            dgp == ln &
+            te_intervention == te &
             time < length - 11) # Intervention at T0 = 49 or 211, prediction range is 12
         assign(nam, data_train)
         write.csv(data_train, paste0("datasets/text_data/sim/", nam, ".csv"), row.names = FALSE)
@@ -73,7 +62,7 @@ for (length in time_series_lengths) {
         for(file_type in c("train", "validation", "test")){
             for(i in c(1:amount)){
                 # print(i)
-                series_id_i <- paste(amount,i,length,ln_original,te_original, sep='_')
+                series_id_i <- paste(amount,i,length,ln,te, sep='_')
                 data_train_i <- data_train[data_train$series_id == series_id_i, "value"]
 
                 # mean-scale normalization
@@ -236,9 +225,29 @@ for (length in time_series_lengths) {
         data_test <- scenario_df %>%
             filter(time_series_length == length & 
             amount_of_time_series == amount &
-            dgp == ln_original &
-            te_intervention == te_original &
+            dgp == ln &
+            te_intervention == te &
             time >= length - 11)
+        assign(nam, data_test)
+        write.csv(data_test, paste0("datasets/text_data/sim/", nam, ".csv"), row.names = FALSE)
+      }
+    }
+  }
+}
+
+
+for (length in time_series_lengths) {
+  for (amount in amount_of_time_series) {
+    for (ln in dgp) {
+      for (te in te_intervention){ 
+        
+        # test data as actual data
+        nam <- paste("sim", amount, length, ln, te, "true_counterfactual", sep = "_")
+        data_test <- scenario_df_true %>%
+            filter(time_series_length == length & 
+            amount_of_time_series == amount &
+            dgp == ln &
+            te_intervention == te)
         assign(nam, data_test)
         write.csv(data_test, paste0("datasets/text_data/sim/", nam, ".csv"), row.names = FALSE)
       }

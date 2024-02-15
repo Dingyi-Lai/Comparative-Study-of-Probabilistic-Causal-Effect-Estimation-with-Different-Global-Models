@@ -1,0 +1,8 @@
+cell_dimension integer [10, 25] [10]
+gaussian_noise_stdev real [0.0001, 0.0008] [0.0001]
+l2_regularization real [0.0001, 0.0008] [0.0001]
+max_epoch_size integer [10, 50] [10]
+max_num_epochs integer [2, 25] [2]
+minibatch_size integer [5, 15] [5]
+num_hidden_layers integer [1, 4] [1]
+random_normal_initializer_stdev real [0.0001, 0.0008] [0.0001]
