@@ -1,2 +1,2 @@
-model_checkpoint_path: "sim_10_60_l_he_best"
-all_model_checkpoint_paths: "sim_10_60_l_he_best"
+model_checkpoint_path: "sim_500_222_nl_ho_best"
+all_model_checkpoint_paths: "sim_500_222_nl_ho_best"
