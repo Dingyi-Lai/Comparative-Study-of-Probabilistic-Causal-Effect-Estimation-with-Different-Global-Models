@@ -66,7 +66,7 @@ class DataLoader:
     if self.dt_type=='calls911':
       df = df_raw.set_index('date')
     if self.dt_type=='sim':
-      df = df_raw
+      df = df_raw.set_index('time')
     # df = df_raw.set_index('date') #call
      #sim
     if self.feature_type == 'S':
