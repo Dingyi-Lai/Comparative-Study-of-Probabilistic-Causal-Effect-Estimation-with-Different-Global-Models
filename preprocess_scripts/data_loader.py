@@ -22,19 +22,17 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 
-
-DATA_DIR = 'gs://time_series_datasets'
-# LOCAL_CACHE_DIR = './datasets/text_data/calls911'
-LOCAL_CACHE_DIR = './datasets/text_data/sim'
-
-
 class DataLoader:
   """Generate data loader from raw data."""
 
   def __init__(
-      self, data, batch_size, seq_len, pred_len, feature_type, target='OT'
+      self, data, batch_size, seq_len, pred_len, feature_type, dt_type, target='OT', 
   ):
+    self.DATA_DIR = 'gs://time_series_datasets'
+    # LOCAL_CACHE_DIR = '../datasets/text_data/calls911'
+    self.LOCAL_CACHE_DIR = '../datasets/text_data/' + dt_type
     self.data = data
+    self.dt_type = dt_type
     if batch_size:
       self.batch_size = batch_size
     # if without_stl_decomposition:
@@ -51,22 +49,26 @@ class DataLoader:
     """Load raw data and split datasets."""
 
     # copy data from cloud storage if not exists
-    if not os.path.isdir(LOCAL_CACHE_DIR):
-      os.mkdir(LOCAL_CACHE_DIR)
+    if not os.path.isdir(self.LOCAL_CACHE_DIR):
+      os.mkdir(self.LOCAL_CACHE_DIR)
 
     file_name = self.data + '.csv'
-    cache_filepath = os.path.join(LOCAL_CACHE_DIR, file_name)
+    cache_filepath = os.path.join(self.LOCAL_CACHE_DIR, file_name)
     if not os.path.isfile(cache_filepath):
       tf.io.gfile.copy(
-          os.path.join(DATA_DIR, file_name), cache_filepath, overwrite=True
+          os.path.join(self.DATA_DIR, file_name), cache_filepath, overwrite=True
       )
 
     df_raw = pd.read_csv(cache_filepath)
 
     # S: univariate-univariate, M: multivariate-multivariate, MS:
     # multivariate-univariate
-    # df = df_raw.set_index('date')
-    df = df_raw
+    if self.dt_type=='calls911':
+      df = df_raw.set_index('date')
+    if self.dt_type=='sim':
+      df = df_raw
+    # df = df_raw.set_index('date') #call
+     #sim
     if self.feature_type == 'S':
       df = df[[self.target]]
     elif self.feature_type == 'MS':
