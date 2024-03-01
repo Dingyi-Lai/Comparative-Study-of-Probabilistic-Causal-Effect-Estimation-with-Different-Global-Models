@@ -268,10 +268,12 @@ if __name__ == '__main__':
     txt_test_file_path = "datasets/text_data/" + args.dataset_type +  \
         "/moving_window/" + dataset_name + "_test_" + args.forecast_horizon + "_" +  \
             str(input_size-1) + ".txt"
+    # actual_results_file_path = "datasets/text_data/" + args.dataset_type +  \
+    #     "/" + dataset_name + "_test_actual.csv"
     actual_results_file_path = "datasets/text_data/" + args.dataset_type +  \
-        "/" + dataset_name + "_test_actual.csv"
-    original_data_file_path = "datasets/text_data/" + args.dataset_type +  \
-        "/" + dataset_name + "_train.csv"
+        "/" + dataset_name + "_for_errors.csv"
+    # original_data_file_path = "datasets/text_data/" + args.dataset_type +  \
+    #     "/" + dataset_name + "_train.csv"
     # define the key word arguments for the different model types
     model_kwargs = {
         'use_bias': BIAS,
@@ -293,76 +295,76 @@ if __name__ == '__main__':
         'without_stl_decomposition': without_stl_decomposition
     }
 
-    # select the model type
-    model = StackingModel(**model_kwargs)
+    # # select the model type
+    # model = StackingModel(**model_kwargs)
 
-    # delete model if existing
-    for file in glob.glob("./results/nn_model_results/rnn/"+model_identifier+"_model.pkl"):
-        os.remove(file)
+    # # delete model if existing
+    # for file in glob.glob("./results/nn_model_results/rnn/"+model_identifier+"_model.pkl"):
+    #     os.remove(file)
 
-    # save model
-    with open("./results/nn_model_results/rnn/"+model_identifier+"_model.pkl", "wb") as fout:
-        pickle.dump(model, fout)
+    # # save model
+    # with open("./results/nn_model_results/rnn/"+model_identifier+"_model.pkl", "wb") as fout:
+    #     pickle.dump(model, fout)
     
-    # # Load the study from the saved file
-    # with open("./results/nn_model_results/rnn/"+model_identifier+"_model.pkl", "rb") as fin:
-    #     model = pickle.load(fin)
+    # # # Load the study from the saved file
+    # # with open("./results/nn_model_results/rnn/"+model_identifier+"_model.pkl", "rb") as fin:
+    # #     model = pickle.load(fin)
     
-    # delete hyperparameter configs files if existing
-    for file in glob.glob(hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + model_identifier + "*"):
-        os.remove(file)
+    # # delete hyperparameter configs files if existing
+    # for file in glob.glob(hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + model_identifier + "*"):
+    #     os.remove(file)
 
-    # read the initial hyperparamter configurations from the file
-    hyperparameter_values_dic = read_initial_hyperparameter_values(initial_hyperparameter_values_file)
-    optimized_configuration = smac()
-    print(optimized_configuration)
-
-    # persist the optimized configuration to a file
-    persist_results(optimized_configuration, hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + '/' + model_identifier + '.txt')
-
-    # # not training again but just read in
-    # optimized_configuration = read_optimal_hyperparameter_values("./results/nn_model_results/rnn/optimized_configurations/" + model_identifier + ".txt")
+    # # read the initial hyperparamter configurations from the file
+    # hyperparameter_values_dic = read_initial_hyperparameter_values(initial_hyperparameter_values_file)
+    # optimized_configuration = smac()
     # print(optimized_configuration)
 
-    # delete the forecast files if existing
-    for file in glob.glob(
-            model_testing_configs.FORECASTS_DIRECTORY + model_identifier + "*"):
-        os.remove(file)
+    # # persist the optimized configuration to a file
+    # persist_results(optimized_configuration, hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + '/' + model_identifier + '.txt')
 
-    print("tuning finished")
-    T2 = time.time()
-    print(T2)
-    for seed in range(1, 11):
-        forecasts = model.test_model(optimized_configuration, seed)
+    # # # not training again but just read in
+    # # optimized_configuration = read_optimal_hyperparameter_values("./results/nn_model_results/rnn/optimized_configurations/" + model_identifier + ".txt")
+    # # print(optimized_configuration)
 
-        model_identifier_extended = model_identifier + "_" + str(seed)
-        for k, v in forecasts.items():
-            rnn_forecasts_file_path = model_testing_configs.FORECASTS_DIRECTORY + model_identifier_extended + 'q_' + str(k) + '.txt'
+    # # delete the forecast files if existing
+    # for file in glob.glob(
+    #         model_testing_configs.FORECASTS_DIRECTORY + model_identifier + "*"):
+    #     os.remove(file)
+
+    # print("tuning finished")
+    # T2 = time.time()
+    # print(T2)
+    # for seed in range(1, 11):
+    #     forecasts = model.test_model(optimized_configuration, seed)
+
+    #     model_identifier_extended = model_identifier + "_" + str(seed)
+    #     for k, v in forecasts.items():
+    #         rnn_forecasts_file_path = model_testing_configs.FORECASTS_DIRECTORY + model_identifier_extended + 'q_' + str(k) + '.txt'
             
-            with open(rnn_forecasts_file_path, "w") as output:
-                writer = csv.writer(output, lineterminator='\n')
-                writer.writerows(forecasts[k])
-    print("prediction finished")
-    T3 = time.time()
+    #         with open(rnn_forecasts_file_path, "w") as output:
+    #             writer = csv.writer(output, lineterminator='\n')
+    #             writer.writerows(forecasts[k])
+    # print("prediction finished")
+    # T3 = time.time()
     
     
-    # delete the ensembled forecast files if existing
-    for file in glob.glob(
-            model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY + model_identifier + "*"):
-        os.remove(file)
+    # # delete the ensembled forecast files if existing
+    # for file in glob.glob(
+    #         model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY + model_identifier + "*"):
+    #     os.remove(file)
 
-    # ensemble the forecasts
-    ensembled_forecasts = ensembling_forecasts(model_identifier, model_testing_configs.FORECASTS_DIRECTORY,
-                         model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY,quantile_range)
+    # # ensemble the forecasts
+    # ensembled_forecasts = ensembling_forecasts(model_identifier, model_testing_configs.FORECASTS_DIRECTORY,
+    #                      model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY,quantile_range)
 
-    # # not training again but just read in
-    # ensembled_forecasts = {}
-    # for q in quantile_range:
-    #     ensembled_forecasts[q] = pd.read_csv(model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY +\
-    #                                           model_identifier + "_" + str(q) +".txt",header=None)
+    # not training again but just read in
+    ensembled_forecasts = {}
+    for q in quantile_range:
+        ensembled_forecasts[q] = pd.read_csv(model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY +\
+                                              model_identifier + "_" + str(q) +".txt",header=None)
 
-    print("ensembled finished")
-    T4 = time.time()
+    # print("ensembled finished")
+    # T4 = time.time()
 
     evaluate_args = [model_testing_configs.ENSEMBLE_FORECASTS_DIRECTORY,
                    model_testing_configs.ENSEMBLE_ERRORS_DIRECTORY,
@@ -370,14 +372,15 @@ if __name__ == '__main__':
                    model_identifier,
                    txt_test_file_path,
                    actual_results_file_path,
-                   original_data_file_path,
+                #    original_data_file_path,
                    input_size,
                    output_size,
                    int(contain_zero_values),
                    int(address_near_zero_instability),
                    int(integer_conversion),
                    seasonality_period,
-                   int(without_stl_decomposition)]
+                   int(without_stl_decomposition),
+                   args.dataset_type]
     evaluate(evaluate_args, ensembled_forecasts)
     # print("invoking R")
     # # invoke the final error calculation

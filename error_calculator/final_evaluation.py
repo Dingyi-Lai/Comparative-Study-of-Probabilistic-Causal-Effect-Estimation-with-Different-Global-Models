@@ -45,14 +45,15 @@ def evaluate(evaluate_args, ensembled_forecasts):
     processed_forecasts_directory = evaluate_args[2]
     txt_test_file_name = evaluate_args[4]
     actual_results_file_name = evaluate_args[5]
-    original_data_file_name = evaluate_args[6]
-    input_size = evaluate_args[7]
-    output_size = evaluate_args[8]
-    contain_zero_values = evaluate_args[9]
-    address_near_zero_instability = evaluate_args[10]
-    integer_conversion = evaluate_args[11]
-    seasonality_period = evaluate_args[12]
-    without_stl_decomposition = evaluate_args[13]
+    # original_data_file_name = evaluate_args[6]
+    input_size = evaluate_args[6]
+    output_size = evaluate_args[7]
+    contain_zero_values = evaluate_args[8]
+    address_near_zero_instability = evaluate_args[9]
+    integer_conversion = evaluate_args[10]
+    seasonality_period = evaluate_args[11]
+    without_stl_decomposition = evaluate_args[12]
+    dataset_type = evaluate_args[13]
     # root_directory = '/path/to/root/directory/'
 
     # Errors file names
@@ -69,19 +70,23 @@ def evaluate(evaluate_args, ensembled_forecasts):
 
     # Actual results file name
     # print(actual_results)
-    actual_results = pd.read_csv(actual_results_file_name)
+    actual_results = pd.read_csv(actual_results_file_name).iloc[:,1:]
     # print(actual_results)
     # print(" ")
-    if "series_id" in actual_results.columns:
-        actual_results = actual_results.pivot(index='series_id', columns='time')['value']
-        original_dataset = pd.read_csv(original_data_file_name)
-        original_dataset = original_dataset.pivot(index='series_id', columns='time')['value']
-        # Use the custom sorting function as the key
-        actual_results = actual_results.loc[sorted(actual_results.index, key=custom_sort_key),:]
-        original_dataset = original_dataset.loc[sorted(original_dataset.index, key=custom_sort_key),:]
-    else:
-        actual_results = actual_results.iloc[:,1:]
-        original_dataset = pd.read_csv(original_data_file_name)
+    # if "series_id" in actual_results.columns:
+    #     actual_results = actual_results.pivot(index='series_id', columns='time')['value']
+    #     original_dataset = pd.read_csv(original_data_file_name)
+    #     original_dataset = original_dataset.pivot(index='series_id', columns='time')['value']
+    #     # Use the custom sorting function as the key
+    #     actual_results = actual_results.loc[sorted(actual_results.index, key=custom_sort_key),:]
+    #     original_dataset = original_dataset.loc[sorted(original_dataset.index, key=custom_sort_key),:]
+    # else:
+    #     actual_results = actual_results.iloc[:,1:]
+    #     original_dataset = pd.read_csv(original_data_file_name)
+    length_of_series = len(actual_results.index)
+
+    data_row_A = actual_results.iloc[length_of_series-output_size:, :].T
+    data_row_B = actual_results.iloc[:length_of_series-output_size, :].T
 
     # print(actual_results)
     # print(" ")
@@ -103,17 +108,46 @@ def evaluate(evaluate_args, ensembled_forecasts):
     uniqueindexes = [i-2 for i, val in enumerate(value, start=1) if val != value[i-2] and i!= 1]
     uniqueindexes.append(len(value)-1)
 
-    actual_results_df = actual_results.dropna()
+    data_row_A = data_row_A.dropna()
 
     # initialize
-    converted_forecasts_matrix = np.zeros((len(ensembled_forecasts[0.5]), output_size))
+    # converted_forecasts_matrix = np.zeros((len(ensembled_forecasts[0.5]), output_size))
+    if dataset_type == 'calls911':
+        control = ["BRIDGEPORT", "BRYN ATHYN", "DOUGLASS", "HATBORO", "HATFIELD BORO",
+                    "LOWER FREDERICK", "NEW HANOVER", "NORRISTOWN", "NORTH WALES", "SALFORD",
+                    "SPRINGFIELD", "TRAPPE"]
+        converted_forecasts_matrix = np.zeros((len(control), output_size))
+    else:
+        converted_forecasts_matrix = np.zeros((len(ensembled_forecasts[0.5]), output_size))
+
     mase_vector = []
     crps_vector = []
     # lambda_val = -0.7 useless
 
     for k, v in ensembled_forecasts.items():
         # Perform spline regression for each time series
+        if dataset_type == 'calls911':
+            data_row_cols = ["ABINGTON","AMBLER","BRIDGEPORT","BRYN ATHYN","CHELTENHAM",
+                             "COLLEGEVILLE","CONSHOHOCKEN","DOUGLASS","EAST GREENVILLE",
+                             "EAST NORRITON","FRANCONIA","GREEN LANE","HATBORO",
+                             "HATFIELD BORO","HATFIELD TOWNSHIP","HORSHAM","JENKINTOWN",
+                             "LANSDALE","LIMERICK","LOWER FREDERICK","LOWER GWYNEDD",
+                             "LOWER MERION","LOWER MORELAND","LOWER POTTSGROVE",
+                             "LOWER PROVIDENCE","LOWER SALFORD","MARLBOROUGH","MONTGOMERY",
+                             "NARBERTH","NEW HANOVER","NORRISTOWN","NORTH WALES","PENNSBURG",
+                             "PERKIOMEN","PLYMOUTH","POTTSTOWN","RED HILL","ROCKLEDGE",
+                             "ROYERSFORD","SALFORD","SCHWENKSVILLE","SKIPPACK","SOUDERTON",
+                             "SPRINGFIELD","TELFORD","TOWAMENCIN","TRAPPE","UPPER DUBLIN",
+                             "UPPER FREDERICK","UPPER GWYNEDD","UPPER HANOVER","UPPER MERION",
+                             "UPPER MORELAND","UPPER POTTSGROVE","UPPER PROVIDENCE",
+                             "UPPER SALFORD","WEST CONSHOHOCKEN","WEST NORRITON",
+                             "WEST POTTSGROVE","WHITEMARSH","WHITPAIN","WORCESTER"]
+            v['names'] = data_row_cols
+            v.set_index('names', inplace=True)
+            v = v.loc[control,:]
+        
         num_time_series = v.shape[0]
+        # print(num_time_series)
         for i in range(num_time_series):
             # post-processing
             one_ts_forecasts = v.iloc[i].values
@@ -145,15 +179,16 @@ def evaluate(evaluate_args, ensembled_forecasts):
                 # original_dataset_df = pd.DataFrame(original_dataset)
                 # original_values = list(original_dataset_df.index+1)
                 # print(original_dataset)
-                lagged_diff = [original_dataset.iloc[i,j] - \
-                               original_dataset.iloc[i,j - \
-                                seasonality_period] for j in \
-                                range(seasonality_period, len(original_dataset.columns))]
+                lagged_diff = [data_row_B.iloc[i,j] - \
+                               data_row_B.iloc[i,j - \
+                                output_size] for j in \
+                                range(output_size, len(data_row_B.columns))]
                 # print(np.array(actual_results_df.iloc[i]))
                 # print(" ")
                 # print(converted_forecasts_df)
-                mase_vector.append(mase_greybox(np.array(actual_results_df.iloc[i]), converted_forecasts_df, np.mean(np.abs(lagged_diff))))
-
+                mase_vector.append(mase_greybox(np.array(data_row_A.iloc[i]), converted_forecasts_df, np.mean(np.abs(lagged_diff))))
+                # mase_vector.append(np.mean(np.abs(np.array(np.array(data_row_A.iloc[i]))\
+                #  - np.array(converted_forecasts_df.iloc[i])) / np.mean(np.abs(lagged_diff))))
         if k == 0.5:
             converted_forecasts_smape = converted_forecasts_matrix
         crps_vector.append(converted_forecasts_matrix)
@@ -164,7 +199,7 @@ def evaluate(evaluate_args, ensembled_forecasts):
     crps_y_pred = np.transpose(cs(list(ensembled_forecasts.keys())), (1, 0, 2))
     
     # Calculating the CRPS
-    crps_qs = mean_weighted_quantile_loss(crps_y_pred, np.array(actual_results_df), ensembled_forecasts.keys())
+    crps_qs = mean_weighted_quantile_loss(crps_y_pred, np.array(data_row_A), ensembled_forecasts.keys())
 
     mean_CRPS = np.mean(crps_qs)
 
@@ -180,12 +215,13 @@ def evaluate(evaluate_args, ensembled_forecasts):
     if address_near_zero_instability:
         epsilon = 0.1
         comparator = 0.5 + epsilon
-        sum_term = np.maximum(comparator, (np.abs(converted_forecasts_smape) + np.abs(np.array(actual_results_df)) + epsilon))
-        time_series_wise_SMAPE = 2 * np.abs(converted_forecasts_smape - np.array(actual_results_df)) / sum_term
+        sum_term = np.maximum(comparator, (np.abs(converted_forecasts_smape) + np.abs(np.array(data_row_A)) + epsilon))
+        time_series_wise_SMAPE = 2 * np.abs(converted_forecasts_smape - np.array(data_row_A)) / sum_term
     else:
-        time_series_wise_SMAPE = 2 * np.abs(converted_forecasts_smape - np.array(actual_results_df)) / (np.abs(converted_forecasts_smape) + np.abs(np.array(actual_results_df)))
+        time_series_wise_SMAPE = 2 * np.abs(converted_forecasts_smape - np.array(data_row_A)) / \
+            (np.abs(converted_forecasts_smape) + np.abs(np.array(data_row_A)))
 
-    SMAPEPerSeries = np.mean(time_series_wise_SMAPE, axis=1)
+    SMAPEPerSeries = np.mean(time_series_wise_SMAPE, axis=1) #
 
     mean_SMAPE = np.mean(SMAPEPerSeries)
     # median_SMAPE = np.median(SMAPEPerSeries)
