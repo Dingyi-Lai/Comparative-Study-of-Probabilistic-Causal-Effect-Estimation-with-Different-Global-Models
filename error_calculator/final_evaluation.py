@@ -111,14 +111,14 @@ def evaluate(evaluate_args, ensembled_forecasts):
     data_row_A = data_row_A.dropna()
 
     # initialize
-    # converted_forecasts_matrix = np.zeros((len(ensembled_forecasts[0.5]), output_size))
-    if dataset_type == 'calls911':
-        control = ["BRIDGEPORT", "BRYN ATHYN", "DOUGLASS", "HATBORO", "HATFIELD BORO",
-                    "LOWER FREDERICK", "NEW HANOVER", "NORRISTOWN", "NORTH WALES", "SALFORD",
-                    "SPRINGFIELD", "TRAPPE"]
-        converted_forecasts_matrix = np.zeros((len(control), output_size))
-    else:
-        converted_forecasts_matrix = np.zeros((len(ensembled_forecasts[0.5]), output_size))
+    converted_forecasts_matrix = np.zeros((len(ensembled_forecasts[0.5]), output_size))
+    # if dataset_type == 'calls911':
+    #     control = ["BRIDGEPORT", "BRYN ATHYN", "DOUGLASS", "HATBORO", "HATFIELD BORO",
+    #                 "LOWER FREDERICK", "NEW HANOVER", "NORRISTOWN", "NORTH WALES", "SALFORD",
+    #                 "SPRINGFIELD", "TRAPPE"]
+    #     converted_forecasts_matrix = np.zeros((len(control), output_size))
+    # else:
+    #     converted_forecasts_matrix = np.zeros((len(ensembled_forecasts[0.5]), output_size))
 
     mase_vector = []
     crps_vector = []
@@ -127,6 +127,9 @@ def evaluate(evaluate_args, ensembled_forecasts):
     for k, v in ensembled_forecasts.items():
         # Perform spline regression for each time series
         if dataset_type == 'calls911':
+            control = ["BRIDGEPORT", "BRYN ATHYN", "DOUGLASS", "HATBORO", "HATFIELD BORO",
+                    "LOWER FREDERICK", "NEW HANOVER", "NORRISTOWN", "NORTH WALES", "SALFORD",
+                    "SPRINGFIELD", "TRAPPE"]
             data_row_cols = ["ABINGTON","AMBLER","BRIDGEPORT","BRYN ATHYN","CHELTENHAM",
                              "COLLEGEVILLE","CONSHOHOCKEN","DOUGLASS","EAST GREENVILLE",
                              "EAST NORRITON","FRANCONIA","GREEN LANE","HATBORO",
@@ -144,12 +147,14 @@ def evaluate(evaluate_args, ensembled_forecasts):
                              "WEST POTTSGROVE","WHITEMARSH","WHITPAIN","WORCESTER"]
             v['names'] = data_row_cols
             v.set_index('names', inplace=True)
-            v = v.loc[control,:]
+            # v = v.drop('names', axis=1)
+            # v = v.loc[control,:]
         
         num_time_series = v.shape[0]
-        # print(num_time_series)
+        print(num_time_series)
         for i in range(num_time_series):
             # post-processing
+            # print(v.index[i])
             one_ts_forecasts = v.iloc[i].values
             finalindex = uniqueindexes[i]
             one_line_test_data = txt_test_df.iloc[finalindex].values
@@ -172,26 +177,32 @@ def evaluate(evaluate_args, ensembled_forecasts):
 
             converted_forecasts_matrix[i, :] = converted_forecasts_df # one_ts_forecasts
             
-            if k == 0.5:
+            if k == 0.5 and v.index[i] in control:
+                # print(v.index[i])
                 # np.diff(np.array(original_dataset[i]), lag=seasonality_period, differences=1))
                 # original_values = list(map(float, original_dataset[i]))
                 # print(original_dataset)
                 # original_dataset_df = pd.DataFrame(original_dataset)
                 # original_values = list(original_dataset_df.index+1)
                 # print(original_dataset)
-                lagged_diff = [data_row_B.iloc[i,j] - \
-                               data_row_B.iloc[i,j - \
-                                output_size] for j in \
-                                range(output_size, len(data_row_B.columns))]
+                c = control.index(v.index[i])
+                lagged_diff = [data_row_B.iloc[c,j] - \
+                               data_row_B.iloc[c,j - \
+                                seasonality_period] for j in \
+                                range(seasonality_period, len(data_row_B.columns))]
                 # print(np.array(actual_results_df.iloc[i]))
                 # print(" ")
                 # print(converted_forecasts_df)
-                mase_vector.append(mase_greybox(np.array(data_row_A.iloc[i]), converted_forecasts_df, np.mean(np.abs(lagged_diff))))
+                mase_vector.append(mase_greybox(np.array(data_row_A.iloc[c]),\
+                     converted_forecasts_df, np.mean(np.abs(lagged_diff))))
                 # mase_vector.append(np.mean(np.abs(np.array(np.array(data_row_A.iloc[i]))\
                 #  - np.array(converted_forecasts_df.iloc[i])) / np.mean(np.abs(lagged_diff))))
-        if k == 0.5:
-            converted_forecasts_smape = converted_forecasts_matrix
-        crps_vector.append(converted_forecasts_matrix)
+        converted_forecasts_m_df = pd.DataFrame(converted_forecasts_matrix)
+        converted_forecasts_m_df['names'] = data_row_cols
+        converted_forecasts_m_df.set_index('names', inplace=True)
+        if k == 0.5:  
+            converted_forecasts_smape = converted_forecasts_m_df.loc[control,:]
+        crps_vector.append(converted_forecasts_m_df.loc[control,:])
         # Persisting the converted forecasts
         np.savetxt(processed_forecasts_file+'_'+str(k)+'.txt', converted_forecasts_matrix, delimiter=",")
 

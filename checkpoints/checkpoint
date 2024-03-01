@@ -1,2 +1,2 @@
-model_checkpoint_path: "sim_500_222_nl_ho_best"
-all_model_checkpoint_paths: "sim_500_222_nl_ho_best"
+model_checkpoint_path: "calls911_benchmarks_best"
+all_model_checkpoint_paths: "calls911_benchmarks_best"
