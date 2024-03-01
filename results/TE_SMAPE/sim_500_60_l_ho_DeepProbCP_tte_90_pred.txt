@@ -1,2 +1,2 @@
 Total Treatment Effect for q > 90%: 
-2.780374558056627
+1.7288227101484956

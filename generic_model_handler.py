@@ -27,7 +27,7 @@ from smac.configspace import ConfigurationSpace
 from smac.scenario.scenario import Scenario
 from smac.facade.smac_hpo_facade import SMAC4HPO
 # stacking model
-from rnn_architectures.stacking_model import StackingModel
+from rnn_architectures.stacking_model_p_p import StackingModel
 
 
 LSTM_USE_PEEPHOLES = True # LSTM with “peephole connections"

@@ -214,7 +214,7 @@ class StackingModel:
         dense_layer_output = tf.keras.layers.Dense(self.__output_size, use_bias=self.__use_bias, kernel_initializer=initializer) (masked_output)
 
         # build the model
-        self.__model = tf.keras.Model(inputs=input, outputs=dense_layer_output, name='stacking_model')
+        self.__model = tf.keras.Model(inputs=input, outputs=dense_layer_output, name='stacking_model_p')
 
         # plot the model to validate
         self.__model.summary()
