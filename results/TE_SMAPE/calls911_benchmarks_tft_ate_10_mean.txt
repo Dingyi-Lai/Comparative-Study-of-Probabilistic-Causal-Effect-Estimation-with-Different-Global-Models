@@ -1,0 +1,2 @@
+Average Treatment Effect for q > 10%:
+-54.2892279125395
