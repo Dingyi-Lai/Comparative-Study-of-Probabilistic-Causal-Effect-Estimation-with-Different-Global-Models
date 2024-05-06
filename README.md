@@ -1,18 +1,86 @@
+# Title
+
+**Type:** Master's Thesis
+
+**Author:** Dingyi Lai
+
+**1st Examiner:** Prof. Dr. Stefan Lessmann
+
+**2nd Examiner:** Prof. Dr. Sonja Greven
+
+[Insert here a figure explaining your approach or main results]
+
+## Table of Content
+
+- [Summary](#summary)
+- [Working with the repo](#Working-with-the-repo)
+    - [Dependencies](#Dependencies)
+    - [Setup](#Setup)
+- [Reproducing results](#Reproducing-results)
+    - [Training code](#Training-code)
+    - [Evaluation code](#Evaluation-code)
+    - [Pretrained models](#Pretrained-models)
+- [Results](#Results)
+- [Project structure](-Project-structure)
+
+## Summary
+
+The estimation of causal effects becomes increasingly complex when interventions exert diverse influences across quantiles. Addressing this challenge, we introduce a novel global framework that seamlessly integrates causal analysis with prediction algorithms. Despite remaining theoretical gaps, we propose a standardized approach to answer this research question. This involves defining causal mechanisms via directed acyclic graphs, elucidating theoretical assumptions, conducting placebo tests to identify causal effects, and estimating probabilistic causal effects within the global causal framework. Through comparative analysis utilizing synthetic and real-world datasets, we demonstrate the potential of this framework to estimate varying causal effects across quantiles over time. While promising, ongoing refinement is necessary to enhance the framework's consistency and robustness.
+
+**Keywords**: Causal Inference \sep Time-varying Effect \sep Probabilistic Prediction
+
+## Working with the repo
+
+### Dependencies
+`Python >= 3.6`
+
+### Setup
+
 ## Software Requirements ##
 
-### Python Packages ###
-| Software  | Version |
-| ------------- | ------------- |
-| `Python`  |  `>=3.6`  |
-| `Tensorflow`  | `2.0.0`  |
-| `smac`  | `0.11.1` |
+1. Clone this repository
 
-### R Packages ###
-* smooth
-* MASS
-* forecast
-* stringr, dplyr, ggplot2, tidyverse, hrbrthemes, rstatix, ggpubr
-* "readxl", seasonal, fpp, fpp3, plotly
+2. Create an virtual environment and activate it
+```bash
+python -m venv thesis-env
+source thesis-env/bin/activate
+```
+
+3. Install requirements
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+## Reproducing results
+
+### Data preprocessing code
+We have used two datasets for the experiments of this paper:
+1) Synthetic Dataset: There are 24 scenarios for generation, ranging from short time series (length is 60) to long time series (length is 222), and from homogeneous intervention over 0.9 quantiles (adding one unit standard deviation of treated units before intervention) to heterogeneous intervention over 0.9 quantiles (adding a random number between 0.7 to 1.5, multiplied by one unit standard deviation of treated units before intervention). The dataset also spans from a few time series (amount is 10), medium time series (amount is 101) to many time series (amount is 500), and from a linear data generation process (autoregressive regression, i.e. AR) to nonlinear structure (self-exciting threshold autoregressive, i.e. SETAR) 
+
+
+
+2) The 911 Emergency Calls Dataset for Montgomery County --> an opened dataset from Kaggle containing the 911 emergency calls from Montgomery County (Pennsylvania-USA) from December-2015 to July-2020, where the raw data can be retrieved from this [link](https://www.kaggle.com/mchirico/montcoalert).
+
+### Training code
+
+To train the model(s) in the paper, run this command:
+
+```train
+python train.py --input-data <path_to_data> --alpha 10 --beta 20
+```
+
+### Evaluation code
+
+Does a repository contain a script to calculate the performance of the trained model(s) or run experiments on models?
+
+### Pretrained models
+
+Does a repository provide free access to pretrained model weights?
+
+## Results
+
+Does a repository contain a table/plot of main results and a script to reproduce those results?
 
 ## Path Variables ##
 
@@ -22,11 +90,11 @@ For R scripts, make sure to set the working directory to the project root folder
 
 ## Preprocessing the Data ##
 
-We have used two datasets for the experiments of this paper:
+
 
 1) The National Ambulance Surveillance System (NASS) dataset --> The national dataset of coded ambulance clinical records held by Turning Point, an Australian addiction research and education centre. This data is not an open dataset, therefore it was not possible to share this data here. Then, for the script codes that deal with this data, it was only possible to share the codes, to observe how was done the pre-processing and forecasting proceedings.
 
-2) The 911 Emergency Calls Dataset for Montgomery County --> an opened dataset from Kaggle containing the 911 emergency calls from Montgomery County (Pennsylvania-USA) from December-2015 to July-2020, where the raw data can be retrieved from this [link](https://www.kaggle.com/mchirico/montcoalert).
+
 
 In the `preprocess_scripts/calls911` directory, there are some wrangling and pre-processing script codes to adjust this Dataset 2. First, the `calls911_wrangling_code.R` file wrangles the raw data retrived from the link mentioned previously. Then, the `calls911_to_forecasting_code.R` file adjusts the time series from this dataset for the forecasting task. Finally, the files `adjustOrigTestDtSet.R` and `adjustOrigTraintDtSet.R`, execute some additional steps to format the training and testing datasets to be used for the DeepCPNet framework modelling, in the next steps that will be described in the sequence.
 
@@ -97,3 +165,20 @@ Inside the directory `support_code_scripts` there are 3 support code files:
 * `graphs_and_meanTests_MONTdataset.R` --> code to adjust the data for plotting the Figure 2B concerning to the Dataset 2
 * `licenses_STL_analysis_code.R` --> code to perfom the STL decomposition exploratory analysis for the ALI variable, and to plot Figure 1.
 # master_thesis
+
+## Project structure
+
+(Here is an example from SMART_HOME_N_ENERGY, [Appliance Level Load Prediction](https://github.com/Humboldt-WI/dissertations/tree/main/SMART_HOME_N_ENERGY/Appliance%20Level%20Load%20Prediction) dissertation)
+
+```bash
+├── README.md
+├── requirements.txt                                -- required libraries
+├── data                                            -- stores csv file 
+├── plots                                           -- stores image files
+└── src
+    ├── prepare_source_data.ipynb                   -- preprocesses data
+    ├── data_preparation.ipynb                      -- preparing datasets
+    ├── model_tuning.ipynb                          -- tuning functions
+    └── run_experiment.ipynb                        -- run experiments 
+    └── plots                                       -- plotting functions                 
+```

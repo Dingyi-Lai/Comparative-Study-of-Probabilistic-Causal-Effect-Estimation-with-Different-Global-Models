@@ -1,0 +1,820 @@
+Shortcuts:
+
+```{r table2, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+tabl <- "
+| Insert a code chunk |       Run       |     Knit    |   ->  |      %>%     |
+|:--------------------|:---------------:|:-----------:|:-----:|-------------:|
+|       cmd+alt+i     | cmd+shift+enter | cmd+shift+k | alt+- | ctrl+shift+m |
+"
+cat(tabl) # output the table in a format good for HTML/PDF/docx conversion
+```
+
+- Load required packages
+```{r, message=FALSE}
+library(forecast)
+library(tsDyn)
+library(zoo)
+library(MASS) 
+library(reshape2) 
+library(reshape) 
+library(ggplot2)
+library(dplyr)
+library(gapminder)
+library(smooth)
+```
+
+- Load UNRATE data from U.S. macroeconomic series, 1947–2009
+```{r}
+setwd("...")
+unrate_data <- read.table("datasets/text_data/sim/unrate.txt", header = TRUE,
+                    col.names=c("time", "unemployment"), sep=",")
+head(unrate_data)
+```
+
+-- Typical AR(2) model at first glance:
+
+```{r}
+print(Acf(unrate_data["unemployment"]))
+print(Pacf(unrate_data["unemployment"]))
+```
+
+But the result of fitting auto.arima(unrate_ts_nona) points to ARIMA(1,1,2)(2,0,1)[4] 
+
+It doesn't matter whether the model fit the data, because I aim 
+to simulate linear time series and nonlinear time series. I only utilize
+the unemployment data as a base to embed more realistic informtion on the parameters.
+The simulated data is semi-artificial.
+
+```{r, eval=FALSE, echo=FALSE}
+# # check nonlinearity
+# bds.test(unrate_ts_nona)
+# # there may be nonlinear structure in the data
+
+# # Tsay’s Approach
+# nonlinearityTest(unrate_ts_nona)
+
+# when there is no prior knowledge about the type of nonlinearity
+# a time series may have, the BDS test can be used to test for the
+# existence of nonlinearity in either the time series itself
+# or the residuals from a fitted linear time series model.
+```
+
+-- Transform dataframe to time series object:
+```{r}
+# Convert "time" column to Date format
+unrate_data$time <- as.Date(paste0(unrate_data$time, "-01"), format = "%b-%y-%d")
+
+# Create a time series object
+unrate_ts <- ts(unrate_data$unemployment, frequency = 4, start = c(1947, 1))
+
+# only 1947 has nan value, delete it
+unrate_ts_nona <- na.omit(unrate_ts)
+
+# Print the transformed time series
+head(unrate_ts_nona)
+
+plot(unrate_ts_nona)
+```
+
+- Simulation of Grecov's paper:
+```{r, eval=FALSE}
+#
+# Create an empty dataframe to store scenarios
+scenario_df <- data.frame()
+scenario_df_true <- data.frame()
+
+# Define the time series lengths
+time_series_lengths <- c(60, 222)
+# 
+# Define the amounts of time series
+amount_of_time_series <- c(10, 101, 500)
+# 
+# Define the type of intervention
+te_intervention <- c("ho", "he")
+
+# Define the proportion of control and treated units
+proportion_control_treated <- 0.5
+
+# Define the DGPs (Linear and Nonlinear)
+dgps <- c("l", "nl")
+
+# Loop through scenarios
+for (length in time_series_lengths) {
+  for (amount in amount_of_time_series) {
+    for (dgp in dgps) {
+      for (te in te_intervention){
+        # Fit DGP's model to the UNRATE data
+        if (dgp == "l") {
+                model <- auto.arima(unrate_ts_nona)
+                # print(summary(model))
+            } else if (dgp == "nl") {
+                model <- selectSETAR(unrate_ts_nona, m=2,plot=FALSE)
+                nthresh <- model$nthresh
+                thDelay <- model$bests["thDelay"]
+                # manually record the data
+                model <- setar(unrate_ts_nona, mL=model$bests["mL"],
+                               mH=model$bests["mH"],nthresh=nthresh,
+                  thDelay=thDelay, th=model$bests["th"])
+                # model$coefficients
+                
+                B <- model$coefficients[1:(length(model$coefficients)-1)]
+                th <- model$coefficients["th"]
+            }
+
+        synthetic_data_list <- list()  # Store synthetic data for this scenario
+        
+        # Generate synthetic data for each time series in this scenario
+        for (n in 1:amount) {
+            # Simulate time series
+            temp <- TRUE
+            while(temp){
+              if (dgp == "l") {
+                synthetic_data <- simulate(model, nsim = length, future=F)
+              } else {
+                synthetic_data <- setar.sim(B=B, n=length,Thresh=th,nthresh=nthresh,
+                                            thDelay=thDelay, lag=2,
+                  include=model$include, setarObject=model,type="simul")
+                 # starting=unrate_ts_nona[1])
+                  }
+              # constraints
+              if((any(synthetic_data<0))||(any(synthetic_data>15))){
+                temp <- TRUE
+              }else{
+                temp <- FALSE
+              }
+            }
+
+#               # normalize to 0 mean and unit variance
+#               synthetic_data <- scale(synthetic_data)
+# # First, the series are normalised to zero mean and unit variance. Then, to make
+# # the scenarios more realistic we make all the data non-negative by subtracting from every series its
+# # smallest value if that is negative. Since according to Hyndman and Koehler (2006) the error measures
+# # associated with the study such as Symmetric Mean Absolute Percentage Error (SMAPE) are prone to
+# # issues with values close to zero, as the next step we add one to the whole series if the minimum value
+# # is less than one.
+#               min <- min(synthetic_data)
+#               if (min < 0){
+#                 synthetic_data <- synthetic_data - min
+#               }
+#               if (min < 1){
+#                 synthetic_data <- synthetic_data + 1
+#               }
+#               synthetic_data <- t(synthetic_data)
+
+            synthetic_data_list[[n]] <- synthetic_data
+        }
+            
+        # Combine synthetic data into a single dataframe
+        synthetic_data_df <- do.call(rbind, synthetic_data_list)
+        #   synthetic_data_df <- cbind(c(1:amount), synthetic_data_df)
+        
+        # Divide units into control and treated
+        num_control <- floor(amount * proportion_control_treated)
+        control_units <- synthetic_data_df[1:num_control, ]
+        treated_units <- synthetic_data_df[(num_control + 1):amount, ]
+        
+        # Introduce homogeneous or heterogeneous interventions
+        ## replicate the dataframe
+        # treated_units <- cbind.data.frame(rep(te_intervention, each=num_control),
+        #     treated_units[rep(seq_len(nrow(treated_units)), times = 2),])
+        
+        # Intervention at T0 = 49 or 211, prediction range is 12
+        # quantile_90 <- quantile(unlist(treated_units[ , (length-11):length]), 0.9) 
+        quantile_90 <- apply(treated_units[, (length-11):length], 2,
+                             quantile, probs = 0.9)
+        # Calculate the standard deviation from the treated units before intervention
+        sd_before_intervention <- sd(unlist(treated_units[, 1:(length-10)]))
+        treated_units_origin <- matrix(treated_units[, (length-11):length], nrow = nrow(treated_units), ncol = 12)
+
+        if (te == "ho"){
+            treated_units[ , (length-11):length][treated_units[ ,
+             (length-11):length] >= quantile_90] <- treated_units[ ,
+               (length-11):length][treated_units[ , (length-11):length] >=
+                quantile_90] + sd_before_intervention
+                # Add one sd
+        }else{
+            treated_units[ , (length-11):length][treated_units[ ,
+             (length-11):length] > quantile_90] <- treated_units[ ,
+               (length-11):length][treated_units[ , (length-11):length] >
+                quantile_90] + runif(1, 0.7, 1.5) * sd_before_intervention 
+            # Add r * sd
+        }
+
+        # Melt the groups
+        control_units_melted <- melt(control_units)
+        colnames(control_units_melted) <- c("series_id", "time", "value")
+        control_units_melted["c_t"] <- "control"
+        treated_units_melted <- melt(treated_units)
+        colnames(treated_units_melted) <- c("series_id", "time", "value")
+        treated_units_melted["c_t"] <- "treated"
+        treated_units_melted["series_id"] <- treated_units_melted["series_id"] + num_control
+        treated_units_original_melted <- melt(treated_units_origin)
+        colnames(treated_units_original_melted) <- c("series_id", "time", "value")
+        treated_units_original_melted["c_t"] <- "treated"
+        treated_units_original_melted["series_id"] <- treated_units_original_melted["series_id"] + num_control
+        
+        # Create a scenario row
+        scenario_row <- rbind(control_units_melted, treated_units_melted)
+        scenario_row["time_series_length"] <- length
+        scenario_row["amount_of_time_series"] <- amount
+        scenario_row["dgp"] <- dgp
+        scenario_row["te_intervention"] <- te
+        scenario_row["series_id"] <- with(scenario_row, 
+            paste0(amount_of_time_series, "_",# c_t,"_",
+                series_id, "_", time_series_length, "_",
+                    dgp, "_", te_intervention))
+        # for true counterfactual
+        scenario_row_true <- treated_units_original_melted
+        scenario_row_true["time_series_length"] <- length
+        scenario_row_true["amount_of_time_series"] <- amount
+        scenario_row_true["dgp"] <- dgp
+        scenario_row_true["te_intervention"] <- te
+        scenario_row_true["series_id"] <- with(scenario_row_true, 
+            paste0(amount_of_time_series, "_",# c_t,"_",
+                series_id, "_", time_series_length, "_",
+                    dgp, "_", te_intervention))
+        
+        # Add the scenario row to the dataframe
+        scenario_df <- rbind(scenario_df, scenario_row)
+        scenario_df_true <- rbind(scenario_df_true, scenario_row_true)
+      }
+      
+    }
+  }
+} 
+
+
+```
+
+-- Read the result from simulation
+```{r}
+# setwd("/Users/aubrey/Documents/GitHub/Master-s_Thesis")
+# save scenario_df
+# write.csv(scenario_df, "datasets/text_data/sim/scenario_df.csv", row.names = FALSE)
+# write.csv(scenario_df_true, "datasets/text_data/sim/scenario_df_true.csv", row.names = FALSE)
+scenario_df <- read.csv("/Users/aubrey/Documents/GitHub/Master-s_Thesis/datasets/text_data/sim/scenario_df.csv")
+scenario_df_true <- read.csv("/Users/aubrey/Documents/GitHub/Master-s_Thesis/datasets/text_data/sim/scenario_df_true.csv")
+```
+
+-- Check there are 24 simulated scenarios and 4888*2 TSs
+```{r}
+print(nrow(unique(scenario_df[c("time_series_length",
+ "amount_of_time_series", "dgp", "te_intervention")])))
+
+print(nrow(unique(scenario_df[c("series_id")])))
+```
+
+1. Figure2_a from the paper
+```{r, fig.asp=0.5, fig.width=10}
+# Calculate an average
+example <- scenario_df
+example["average_or_not"] <- "individual"
+
+# average of all time series
+example_average <- example %>% 
+  group_by(time) %>% 
+  summarize(value = mean(value))
+
+# average of all treated time series after 49
+example_average1 <- example %>%
+  filter(c_t == "treated" & time_series_length == 60 & time >= 49) %>% 
+  group_by(time) %>% 
+  summarize(value = mean(value))
+
+# average of all treated time series after 211
+example_average2 <- example %>%
+  filter(c_t == "treated" & time_series_length == 222 & time >= 211) %>% 
+  group_by(time) %>% 
+  summarize(value = mean(value))
+
+bind_average <- function(a, c_t, type, time_series_length){
+  a["average_or_not"] <- type
+  a["c_t"] <- c_t
+  a["amount_of_time_series"] <- 0
+  a["time_series_length"] <- time_series_length
+  a["dgp"] <- "average"
+  a["te_intervention"] <- "average"
+  a["series_id"] <- with(a, 
+              paste0(amount_of_time_series, "_",
+                    time_series_length, "_",
+                      dgp, "_", te_intervention))
+
+  a <- as.data.frame(a)
+  a <- a[c("series_id", "time", "value", "c_t",
+  "time_series_length", "amount_of_time_series", "dgp",
+    "te_intervention", "average_or_not")]
+  return(a)
+}
+
+# example_add_average <- rbind(example, example_average)
+example_add_average <- rbind(example, bind_average(example_average,
+                         "average", "average_all", 222))
+example_add_average <- rbind(example_add_average, 
+                          bind_average(example_average1,"treated",
+                           "average_treated_60", 60))
+example_add_average <- rbind(example_add_average, 
+                          bind_average(example_average2,"treated",
+                           "average_treated_222", 222))
+
+
+# Plotting
+plot <- ggplot(data = example_add_average,
+               aes(x = time, y = value, group = series_id)) + 
+  geom_line(aes(color = average_or_not, alpha = average_or_not)) + 
+  scale_linewidth(range = 0.01) +
+  scale_color_manual(values = c(average_all = "red",
+   average_treated_60 = "black", average_treated_222 = "black",
+    individual = "darkgrey")) +
+  scale_alpha_manual(values = c(average_all = 1,
+   average_treated_60 = 1, average_treated_222 = 1,
+    individual = 0.02))+ 
+      labs(x = "Time", y = "Unemployment rate") +
+          theme(aspect.ratio=2/5)
+plot
+# Save the plot
+# ggsave(file = paste("Figure2_a.pdf"),
+#         plot = plot, width = 8, height = 5, dpi = 300)
+
+```
+
+2. Figure2_b part 1 from the paper
+```{r, fig.asp=0.5, fig.width=10}
+# pre-intervention
+pre_intervention <- quantile(scenario_df[(scenario_df$time<
+  (scenario_df$time_series_length-11)),
+ "value"], probs = seq(0, 1, 1/1000))
+# post-intervention
+post_intervention <- quantile(scenario_df[(scenario_df$c_t=="treated")&
+  (scenario_df$time>=(scenario_df$time_series_length-11)) ,
+ "value"], probs = seq(0, 1, 1/1000))
+# true counterfactual
+true_counterfactual <- quantile(scenario_df[(scenario_df$c_t=="control")&
+  (scenario_df$time>=(scenario_df$time_series_length-11)) ,
+ "value"], probs = seq(0, 1, 1/1000))
+
+quantile_data <- data.frame(quantiles=as.numeric(gsub("%", "", names(pre_intervention))),
+ pre_intervention=unname(pre_intervention),
+  post_intervention=unname(post_intervention),
+    true_counterfactual=unname(true_counterfactual),
+      stringsAsFactors=FALSE)
+
+quantile_data_melted <- melt(quantile_data, id.vars="quantiles", variable_name="type")
+str(quantile_data_melted)
+
+quantile_plot <- ggplot(data = quantile_data_melted, 
+  aes(x=quantiles, y=value)) +
+  geom_line(aes(color = type)) +
+  scale_color_manual(values = c(pre_intervention = "red",
+   post_intervention = "blue", true_counterfactual = "green"))+
+   geom_vline(xintercept=90, color = "purple", linetype = "dashed")+ 
+      labs(x = "Quantiles", y = "Unemployment rate") +
+          theme_minimal() +
+          theme(aspect.ratio=2/5)
+quantile_plot 
+# Save the plot
+# ggsave(file = paste("Figure2_b_1.pdf"), plot=quantile_plot,
+#          width = 8, height = 5, dpi = 300)
+```
+
+3. Figure2_b part 2 from the paper
+```{r, warning=FALSE}
+# The formular
+# pre-intervention
+pre_intervention_f <- quantile(scenario_df[(scenario_df$time<
+  (scenario_df$time_series_length-11)),
+ "value"], probs = c(0,0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7,
+                0.8,0.9,0.95,1))
+# post-intervention
+post_intervention_f <- quantile(scenario_df[(scenario_df$c_t=="treated")&
+  (scenario_df$time>=(scenario_df$time_series_length-11)) ,
+ "value"], probs = c(0,0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7,
+                0.8,0.9,0.95,1))
+quantile_data_f <- data.frame(quantiles=names(pre_intervention_f),
+ pre_intervention=unname(pre_intervention_f),
+  post_intervention=unname(post_intervention_f),
+    Difference=(post_intervention_f-pre_intervention_f)/pre_intervention_f*100,
+      stringsAsFactors=FALSE)
+
+quantile_data_f %>% 
+ mutate(across(2:4, round, digits=2))
+ 
+```
+
+
+- Simulation of Hewamalage's paper under the similar framework like above
+
+I only imitate MS-Hom-Short/Long from their repository: 
+https://drive.google.com/file/d/1LDCEJzOmbmTN3wZXfKUyK8cgInbWaONM/view?usp=sharing
+because the I aim to create multiple time series, each is generated by the same
+DGP, and I only introduce homogeneous or heterogeneous effect in intervention.
+```{r, eval=FALSE}
+set.seed(1)
+setwd("/Users/aubrey/Documents/GitHub/Master-s_Thesis/Simulation")
+source("./ar_coefficients_generator.R")
+# Create an empty dataframe to store scenarios
+scenario_df2 <- data.frame()
+
+# Define the time series lengths
+time_series_lengths <- c(60, 222)
+
+# Define the type of DGPs, first two are linear, last two are nonlinear
+dgps <- c("AR(3)", "SAR(1)", "SETAR", "CLM")
+
+# Define the amounts of time series
+amount_of_time_series <- c(10, 101, 500)
+# 
+# Define the type of intervention
+te_intervention <- c("homogeneous", "heterogeneous")
+
+# Define the proportion of control and treated units
+proportion_control_treated <- 0.5
+
+# # Define the DGPs (Linear and Nonlinear)
+# dgps <- c("linear", "nonlinear")
+
+# Loop through scenarios
+for (length in time_series_lengths) {
+  for (amount in amount_of_time_series) {
+    for (dgp in dgps) {
+      for (te in te_intervention){
+        synthetic_data_list <- list()  # Store synthetic data for this scenario
+        
+        # Generate synthetic data for each time series in this scenario
+        for (n in 1:amount) {
+          # Simulate time series
+          if (dgp == "AR(3)") {
+            lags <- 3 # for AR(3) process
+            maxRoot <- 5 # for a non exploding process
+            # Since the DGP takes some time to reach stability in its generated
+            # values, to avoid issues from initial values of the DGP,
+            # a burn-in period of 100 points is cut o  from the beginning of the series.
+            burn_in <- 100 
+            parameters <- generate_random_arma_parameters(lags, maxRoot)
+            synthetic_data <- arima.sim(model=list(ar=parameters), n=length, n.start = burn_in)
+            # normalize to 0 mean and unit variance
+            synthetic_data <- scale(synthetic_data)
+            min <- min(synthetic_data)
+            if (min < 0){
+              synthetic_data <- synthetic_data - min
+            }
+            if (min < 1){
+              synthetic_data <- synthetic_data + 1
+            }
+            synthetic_data <- t(synthetic_data)
+          }
+
+          if (dgp == "SAR(1)"){
+            # The USAccDeaths series contains the monthly totals of accidental
+            # deaths in the USA for the period from the year 1973 to 1978,
+            # with 72 data points
+            seasonal_arima_mod <- Arima(USAccDeaths, seasonal=c(1,0,0))
+            ts <- simulate(seasonal_arima_mod, nsim=length + burn_in, 
+              seed=(n*(n-1) + amount))
+            synthetic_data <- ts[(length(ts) - length + 1) : length(ts)]
+            # normalize to 0 mean and unit variance
+            synthetic_data <- scale(synthetic_data)
+            min <- min(synthetic_data)
+            if (min < 0){
+              synthetic_data <- synthetic_data - min
+            }
+            if (min < 1){
+              synthetic_data <- synthetic_data + 1
+            }
+            synthetic_data <- t(synthetic_data)
+          }
+
+          if (dgp == "SETAR"){
+            # use the AR coefficients and the threshold values presented
+            # in the example of the tsDyn package
+            # setar related variables
+            lags <- 2
+            no_of_thresholds <- 1
+            threshold_val <- 2
+            coefficient_matrix <- c(2.9,-0.4,-0.1,-1.5, 0.2,0.3)
+            starting_values <- c(2.8, 2.2)
+            coefficient_matrix <- coefficient_matrix + rnorm(n=1, mean=0, sd=0.007)
+            synthetic_data <- setar.sim(B=coefficient_matrix, lag=lags, type="simul",
+              n = length, nthresh=no_of_thresholds, Thresh=threshold_val, starting=starting_values)
+            
+            # normalize to 0 mean and unit variance
+            synthetic_data <- scale(synthetic_data)
+            min <- min(synthetic_data)
+            if (min < 0){
+              synthetic_data <- synthetic_data - min
+            }
+            if (min < 1){
+              synthetic_data <- synthetic_data + 1
+            }
+            synthetic_data <- t(synthetic_data)
+          }
+
+          if (dgp == "CLM"){
+            burn_in <- 40
+            initial_value <- 0.5
+            coefficient <- 3.6
+            ts <- numeric(length + burn_in)
+            ts[1] <- initial_value
+
+            for (i in 2:(length + burn_in)){
+              noise <-  rnorm(1)
+              ts[i] <- max(coefficient*ts[i-1]*(1-ts[i-1]) + noise/10 , 0)
+            }
+
+            synthetic_data <- ts[(burn_in + 1):length(ts)]
+          }
+          synthetic_data_list[[n]] <- synthetic_data 
+        }
+        
+        # Combine synthetic data into a single dataframe
+        synthetic_data_df <- do.call(rbind, synthetic_data_list)
+        #   synthetic_data_df <- cbind(c(1:amount), synthetic_data_df)
+        
+        # Divide units into control and treated
+        num_control <- floor(amount * proportion_control_treated)
+        control_units <- synthetic_data_df[1:num_control, ]
+        treated_units <- synthetic_data_df[(num_control + 1):amount, ]
+        
+        # Introduce homogeneous or heterogeneous interventions        
+        # Intervention at T0 = 49 or 211, prediction range is 12
+        quantile_90 <- quantile(unlist(treated_units[ , (length-11):length]), 0.9) 
+        
+        if (te == "homogeneous"){
+            treated_units[ , (length-11):length][treated_units[ ,
+             (length-11):length] > quantile_90] <- treated_units[ ,
+               (length-11):length][treated_units[ , (length-11):length] >
+                quantile_90] + sd(unlist(treated_units[ , 1:(length-10)]))
+                # Add one sd
+        }
+        else{
+            treated_units[ , (length-11):length][treated_units[ ,
+             (length-11):length] > quantile_90] <- treated_units[ ,
+               (length-11):length][treated_units[ , (length-11):length] >
+                quantile_90] + runif(1, 0.7, 1.5) * sd(unlist(treated_units[ ,
+                 1:(length-10)])) # Add r * sd
+        }
+
+        # Melt the groups
+        control_units_melted <- melt(control_units)
+        colnames(control_units_melted) <- c("series_id", "time", "value")
+        control_units_melted["c_t"] <- "control"
+        treated_units_melted <- melt(treated_units)
+        colnames(treated_units_melted) <- c("series_id", "time", "value")
+        treated_units_melted["c_t"] <- "treated"
+        
+        # Create a scenario row
+        scenario_row <- rbind(control_units_melted, treated_units_melted)
+        scenario_row["time_series_length"] <- length
+        scenario_row["amount_of_time_series"] <- amount
+        scenario_row["dgp"] <- dgp
+        scenario_row["te_intervention"] <- te
+        scenario_row["series_id"] <- with(scenario_row, 
+            paste0(c_t, "_", amount_of_time_series, "_",
+                series_id, "_", time_series_length, "_",
+                    dgp, "_", te_intervention))
+
+        # Add the scenario row to the dataframe
+        scenario_df2 <- rbind(scenario_df2, scenario_row)
+      }
+      
+    }
+  }
+} 
+
+
+```
+
+
+-- Read the result from simulation
+```{r, eval=FALSE}
+setwd("/Users/aubrey/Documents/GitHub/Master-s_Thesis")
+# save scenario_df
+# write.csv(scenario_df2, "datasets/text_data/scenario_df_alternative.csv", row.names = FALSE)
+scenario_df2 <- read.csv("datasets/text_data/scenario_df_alternative.csv")
+```
+
+-- Check there are 48 simulated scenarios
+```{r, eval=FALSE}
+print(nrow(unique(scenario_df2[c("time_series_length",
+ "amount_of_time_series", "dgp", "te_intervention")])))
+
+print(nrow(unique(scenario_df2[c("series_id")])))
+```
+
+-- Check different dgps with time_series_lengths as 60 and amount_of_time_series as 10
+--- AR(3)
+
+*We use an AR(3) DGP to simulate simple linear patterns in the time series data*
+*We follow the procedure of Bergmeir et al. (2012) to randomly produce the 3 roots of the characteristic polynomial first and then generate the AR coefficients based on those.*
+
+```{r, eval=FALSE}
+plot_AR3 <- scenario_df2 %>%
+  filter(amount_of_time_series == 10 &
+   time_series_length == 60 & dgp == 'AR(3)')  %>%
+  ggplot(aes(x = time, y = value, group = series_id)) +
+  geom_line(aes(color = c_t, alpha = te_intervention)) +
+  scale_color_manual(values = c("treated" = "red",
+  "control" = "black")) +
+  scale_alpha_manual(values = c("homogeneous" = 0.5,
+   "heterogeneous" = 1)) +
+   labs(title = "AR(3)",x = "Time", y = "Value") +
+          theme(aspect.ratio=2/5)
+plot_AR3        
+```
+
+--- SAR(1)
+*SAR DGP can simulate time series having a seasonality of a particular periodicity which are also very commonly seen in real-world scenarios.*
+*We first fit an SAR model of order 1 to the USAccDeaths monthly series of the datasets package (R Core Team, 2020) available in the R core libraries*
+```{r, eval=FALSE}
+plot_SAR1<- scenario_df2 %>%
+  filter(amount_of_time_series == 10 &
+   time_series_length == 60 & dgp == 'SAR(1)')  %>%
+  ggplot(aes(x = time, y = value, group = series_id)) +
+  geom_line(aes(color = c_t, alpha = te_intervention)) +
+  scale_color_manual(values = c("treated" = "red",
+  "control" = "black")) +
+  scale_alpha_manual(values = c("homogeneous" = 0.5,
+   "heterogeneous" = 1)) +
+   labs(title = "SAR1",x = "Time", y = "Value") +
+          theme(aspect.ratio=2/5)
+plot_SAR1     
+
+```
+
+--- SETAR
+*The TAR model involves $k_1$ number of threshold values, which separate the space into k regimes, *
+*where each one is modelled by a different AR process of order p.*
+
+*We use the AR coefficients and the threshold values presented in the example of the tsDyn package*
+```{r, eval=FALSE}
+plot_SETAR<- scenario_df2 %>%
+  filter(amount_of_time_series == 10 &
+   time_series_length == 60 & dgp == 'SETAR')  %>%
+  ggplot(aes(x = time, y = value, group = series_id)) +
+  geom_line(aes(color = c_t, alpha = te_intervention)) +
+  scale_color_manual(values = c("treated" = "red",
+  "control" = "black")) +
+  scale_alpha_manual(values = c("homogeneous" = 0.5,
+   "heterogeneous" = 1)) +
+   labs(title = "SETAR",x = "Time", y = "Value") +
+          theme(aspect.ratio=2/5)
+plot_SETAR    
+
+```
+
+--- CLM 
+*Chaotic Logistic Map is a zero-bounded chaotic process*
+
+*For all homogeneous cases, we make the simulated time series difficult to model by forecasting techniques*
+```{r, eval=FALSE}
+plot_CLM<- scenario_df2 %>%
+  filter(amount_of_time_series == 10 &
+   time_series_length == 60 & dgp == 'CLM')  %>%
+  ggplot(aes(x = time, y = value, group = series_id)) +
+  geom_line(aes(color = c_t, alpha = te_intervention)) +
+  scale_color_manual(values = c("treated" = "red",
+  "control" = "black")) +
+  scale_alpha_manual(values = c("homogeneous" = 0.5,
+   "heterogeneous" = 1)) +
+   labs(title = "CLM",x = "Time", y = "Value") +
+          theme(aspect.ratio=2/5)
+plot_CLM   
+
+```
+
+
+1. Figure2_a from the paper
+```{r, fig.asp=0.5, fig.width=10, eval=FALSE}
+# Calculate an average
+example <- scenario_df2
+example["average_or_not"] <- "individual"
+
+# average of all time series
+example_average <- example %>% 
+  group_by(time) %>% 
+  summarize(value = mean(value))
+
+# average of all treated time series after 49
+example_average1 <- example %>%
+  filter(c_t == "treated" & time_series_length == 60 & time >= 49) %>% 
+  group_by(time) %>% 
+  summarize(value = mean(value))
+
+# average of all treated time series after 211
+example_average2 <- example %>%
+  filter(c_t == "treated" & time_series_length == 222 & time >= 211) %>% 
+  group_by(time) %>% 
+  summarize(value = mean(value))
+
+bind_average <- function(a, c_t, type, time_series_length){
+  a["average_or_not"] <- type
+  a["c_t"] <- c_t
+  a["amount_of_time_series"] <- 0
+  a["time_series_length"] <- time_series_length
+  a["dgp"] <- "average"
+  a["te_intervention"] <- "average"
+  a["series_id"] <- with(a, 
+              paste0(c_t, "_", amount_of_time_series, "_",
+                    time_series_length, "_",
+                      dgp, "_", te_intervention))
+
+  a <- as.data.frame(a)
+  a <- a[c("series_id", "time", "value", "c_t",
+  "time_series_length", "amount_of_time_series", "dgp",
+    "te_intervention", "average_or_not")]
+  return(a)
+}
+
+# example_add_average <- rbind(example, example_average)
+example_add_average <- rbind(example, bind_average(example_average,
+                         "average", "average_all", 222))
+example_add_average <- rbind(example_add_average, 
+                          bind_average(example_average1,"treated",
+                           "average_treated_60", 60))
+example_add_average <- rbind(example_add_average, 
+                          bind_average(example_average2,"treated",
+                           "average_treated_222", 222))
+
+
+# Plotting
+plot <- ggplot(data = example_add_average,
+               aes(x = time, y = value, group = series_id)) + 
+  geom_line(aes(color = average_or_not, alpha = average_or_not)) + 
+  scale_linewidth(range = 0.01) +
+  scale_color_manual(values = c(average_all = "red",
+   average_treated_60 = "black", average_treated_222 = "black",
+    individual = "darkgrey")) +
+  scale_alpha_manual(values = c(average_all = 1,
+   average_treated_60 = 1, average_treated_222 = 1,
+    individual = 0.02))+ 
+      labs(x = "Time", y = "Unemployment rate") +
+          theme(aspect.ratio=2/5)
+plot
+# Save the plot
+# ggsave(file = paste("Figure2_a.pdf"),
+#         plot = plot, width = 8, height = 5, dpi = 300)
+
+```
+
+2. Figure2_b part 1 from the paper
+```{r, fig.asp=0.5, fig.width=10, eval=FALSE}
+# pre-intervention
+pre_intervention <- quantile(scenario_df2[(scenario_df2$time<
+  (scenario_df2$time_series_length-11)),
+ "value"], probs = seq(0, 1, 1/1000))
+# post-intervention
+post_intervention <- quantile(scenario_df2[(scenario_df2$c_t=="treated")&
+  (scenario_df2$time>=(scenario_df2$time_series_length-11)) ,
+ "value"], probs = seq(0, 1, 1/1000))
+# true counterfactual
+true_counterfactual <- quantile(scenario_df2[(scenario_df2$c_t=="control")&
+  (scenario_df2$time>=(scenario_df2$time_series_length-11)) ,
+ "value"], probs = seq(0, 1, 1/1000))
+
+quantile_data <- data.frame(quantiles=as.numeric(gsub("%", "", names(pre_intervention))),
+ pre_intervention=unname(pre_intervention),
+  post_intervention=unname(post_intervention),
+    true_counterfactual=unname(true_counterfactual),
+      stringsAsFactors=FALSE)
+
+quantile_data_melted <- melt(quantile_data, id.vars="quantiles", variable_name="type")
+str(quantile_data_melted)
+
+quantile_plot <- ggplot(data = quantile_data_melted, 
+  aes(x=quantiles, y=value)) +
+  geom_line(aes(color = type)) +
+  scale_color_manual(values = c(pre_intervention = "red",
+   post_intervention = "blue", true_counterfactual = "green"))+
+   geom_vline(xintercept=90, color = "purple", linetype = "dashed")+ 
+      labs(x = "Quantiles", y = "Unemployment rate") +
+          theme_minimal() +
+          theme(aspect.ratio=2/5)
+quantile_plot 
+# Save the plot
+# ggsave(file = paste("Figure2_b_1.pdf"), plot=quantile_plot,
+#          width = 8, height = 5, dpi = 300)
+```
+
+3. Figure2_b part 2 from the paper
+```{r, warning=FALSE, eval=FALSE}
+# The formular
+# pre-intervention
+pre_intervention_f <- quantile(scenario_df2[(scenario_df2$time<
+  (scenario_df2$time_series_length-11)),
+ "value"], probs = c(0,0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7,
+                0.8,0.9,0.95,1))
+# post-intervention
+post_intervention_f <- quantile(scenario_df2[(scenario_df2$c_t=="treated")&
+  (scenario_df2$time>=(scenario_df2$time_series_length-11)) ,
+ "value"], probs = c(0,0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7,
+                0.8,0.9,0.95,1))
+quantile_data_f <- data.frame(quantiles=names(pre_intervention_f),
+ pre_intervention=unname(pre_intervention_f),
+  post_intervention=unname(post_intervention_f),
+    Difference=(post_intervention_f-pre_intervention_f)/pre_intervention_f*100,
+      stringsAsFactors=FALSE)
+
+quantile_data_f %>% 
+ mutate(across(2:4, round, digits=2))
+ 
+```
+
