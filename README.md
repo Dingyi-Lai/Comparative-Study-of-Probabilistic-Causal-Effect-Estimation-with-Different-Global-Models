@@ -56,11 +56,38 @@ pip install -r requirements.txt
 
 ### Data preprocessing code
 We have used two datasets for the experiments of this paper:
-1) Synthetic Dataset: There are 24 scenarios for generation, ranging from short time series (length is 60) to long time series (length is 222), and from homogeneous intervention over 0.9 quantiles (adding one unit standard deviation of treated units before intervention) to heterogeneous intervention over 0.9 quantiles (adding a random number between 0.7 to 1.5, multiplied by one unit standard deviation of treated units before intervention). The dataset also spans from a few time series (amount is 10), medium time series (amount is 101) to many time series (amount is 500), and from a linear data generation process (autoregressive regression, i.e. AR) to nonlinear structure (self-exciting threshold autoregressive, i.e. SETAR) 
+1) **Synthetic Dataset:**
 
+The synthetic dataset comprises 24 scenarios for generation, varying from short time series (with a length of 60) to long time series (with a length of 222). These scenarios range from homogeneous intervention over 0.9 quantiles (adding one unit standard deviation of treated units before intervention) to heterogeneous intervention over 0.9 quantiles (adding a random number between 0.7 to 1.5, multiplied by one unit standard deviation of treated units before intervention).
 
+Furthermore, the dataset spans from a few time series (10 in total), medium time series (101 in total) to many time series (500 in total), and from a linear data generation process (autoregressive regression, i.e., AR) to a nonlinear structure (self-exciting threshold autoregressive, i.e., SETAR).
 
-2) The 911 Emergency Calls Dataset for Montgomery County --> an opened dataset from Kaggle containing the 911 emergency calls from Montgomery County (Pennsylvania-USA) from December-2015 to July-2020, where the raw data can be retrieved from this [link](https://www.kaggle.com/mchirico/montcoalert).
+The codes for simulation and exploratory data analysis are located in `./src/prepare_source_data/sim/simulation.rmd`, with its HTML version available at `simulation.html`. The original data for simulation is situated in `./data/text_data/sim/unrate.txt`, accessible from Data_USEconModel in MATLAB.
+
+For DeepProbCP, the dataset undergoes preprocessing using a window moving strategy, implemented in `./src/prepare_source_data/sim/preprocessing_layer.R`. This aligns with the original codes from Grecov et al. for DeepCPNet. Subsequently, `./src/prepare_source_data/sim/create_tfrecords.py` facilitates the creation of data in the tfrecords format to enhance computational efficiency, a method also employed in the previous codes for DeepCPNet. The customized module "tfrecords_handler" is also available in `./src/models/DeepProbCP`.
+
+2) **The 911 Emergency Calls Dataset for Montgomery County**
+
+This dataset, sourced from Kaggle, contains records of 911 emergency calls from Montgomery County, Pennsylvania, USA, spanning from December 2015 to July 2020. The raw data file, named "911.csv," is available for download from the following https://www.kaggle.com/mchirico/montcoalert.
+
+**Exploratory Data Analysis:**
+- The exploratory data analysis is documented in `./src/prepare_source_data/calls911/EDA.ipynb`.
+
+**Data Wrangling:**
+- To process the data, the script `./src/prepare_source_data/calls911/calls911_wrangling_code.R` is utilized for tasks such as splitting, formatting, and cleaning.
+- The resulting output data should ideally be stored in `./data/text_data/calls911/calls3.csv`. However, due to size limitations on GitHub, this file has been removed from the current repository.
+
+**Preprocessing:**
+- Further preprocessing steps are conducted using `./src/prepare_source_data/calls911/calls911_to_forecasting_code.R`.
+- The full monthly dataset is available in `./data/text_data/calls911/calls911_month_full.txt`, while the training dataset spans from December 2015 to December 2019 and is stored in `./data/text_data/calls911/calls911_month_train.txt`. The testing dataset spans from January 2020 to July 2020 and is stored in `./data/text_data/calls911/calls911_month_test.txt`.
+- To address the training and testing datasets in subsequent steps, scripts `./src/prepare_source_data/calls911/adjustOrigTrainDtSet.R` and `./src/prepare_source_data/calls911/adjustOrigTestDtSet.R` are utilized. The resulting output files are named `callsMT2_train.csv` and `callsMT2_test_actual.csv`, serving as the training and testing datasets, respectively.
+
+**For DeepProbCP:**
+- The dataset undergoes preprocessing using a window moving strategy after being transformed to tfrecords by `./src/prepare_source_data/calls911/create_tfrecords.py`.
+- These preprocessing steps are implemented in `./src/prepare_source_data/calls911/mean_stl_train_validation_withoutEXvar.R` and `./src/prepare_source_data/calls911/mean_stl_test_withoutEXvar.R`.
+
+**For Other Models:**
+- The script `./src/prepare_source_data/calls911/benchmarks.py` is utilized to convert `calls911_month_full.txt` to a standardized input format, resulting in `./data/text_data/calls911/calls911_benchmarks.csv`.
 
 ### Training code
 
@@ -87,34 +114,6 @@ Does a repository contain a table/plot of main results and a script to reproduce
 Set the `PYTHONPATH` env variable of the system. Append absolute paths of both the project root directory and the directory of the `external_packages/cocob_optimizer` into the `PYTHONPATH`  
 
 For R scripts, make sure to set the working directory to the project root folder.
-
-## Preprocessing the Data ##
-
-
-
-1) The National Ambulance Surveillance System (NASS) dataset --> The national dataset of coded ambulance clinical records held by Turning Point, an Australian addiction research and education centre. This data is not an open dataset, therefore it was not possible to share this data here. Then, for the script codes that deal with this data, it was only possible to share the codes, to observe how was done the pre-processing and forecasting proceedings.
-
-
-
-In the `preprocess_scripts/calls911` directory, there are some wrangling and pre-processing script codes to adjust this Dataset 2. First, the `calls911_wrangling_code.R` file wrangles the raw data retrived from the link mentioned previously. Then, the `calls911_to_forecasting_code.R` file adjusts the time series from this dataset for the forecasting task. Finally, the files `adjustOrigTestDtSet.R` and `adjustOrigTraintDtSet.R`, execute some additional steps to format the training and testing datasets to be used for the DeepCPNet framework modelling, in the next steps that will be described in the sequence.
-
-In the `preprocess_scripts/EMS` directory we have the same files `adjustOrigTestDtSet.R` and `adjustOrigTraintDtSet.R` to adjust Dataset 1 for the next preprocessing steps as described in the next section.
-
-#### Create the text files of the data ####
-
-From the data reserved to be trained, three files need to be created for every model, one per training, validation and testing. Example preprocessing R scripts to create text data files (`mean_stl_train_validation_....R` and `mean_stl_test_....R` files) are in `preprocess_scripts/EMS (or calls911)/moving_window/without_stl_decomposition` directories.
-
-Sample Record of validation file in moving window format without STL Decomposition: (in `datasets/text_data/calls911/moving_window/without_stl_decomposition` directory):
-
-`1|i 0.0353890753105493 -0.0169499558775499 -0.0447295199846256 0.0870397576464977 -0.00334430382177138 -0.282057706290792 -0.0447295199846256 0.123407401817373 -0.0307432780098858 0.169927417452265 -0.0589141549765821 -0.117754654999516 -0.164274670634408 0.0746172376479405 0.2464674945746 0.0620384554410805 |o -0.164274670634408 0.214379180023099 -0.00334430382177138 0.192400273304324 -0.21306483480384 0.0492994296636507 0.225190096127315 |# 80.3469387755102 -0.0789445958071699`
-
-`input_size = 15`\
-`max_forecast_horizon = 12`\
-`seasonality_period = 12`
-
-#### Create the tfrecord files of the data ####
-
-For faster execution, the text data files are converted to tfrecord binary format. The `tfrecords_handler` module converts the text data into tfrecords format (using `tfrecord_writer.py`) as well as reads in tfrecord data (using `tfrecord_reader.py`) during execution. Example scripts to convert text data into tfrecords format (`create_tfrecords.py` files) can be found in the `preprocess_scripts` directory.
 
 ## Execution Instructions ##
 
