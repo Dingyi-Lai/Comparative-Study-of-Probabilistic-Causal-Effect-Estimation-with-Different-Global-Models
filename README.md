@@ -62,44 +62,61 @@ The synthetic dataset comprises 24 scenarios for generation, varying from short 
 
 Furthermore, the dataset spans from a few time series (10 in total), medium time series (101 in total) to many time series (500 in total), and from a linear data generation process (autoregressive regression, i.e., AR) to a nonlinear structure (self-exciting threshold autoregressive, i.e., SETAR).
 
-The codes for simulation and exploratory data analysis are located in `./src/prepare_source_data/sim/simulation.rmd`, with its HTML version available at `simulation.html`. The original data for simulation is situated in `./data/text_data/sim/unrate.txt`, accessible from Data_USEconModel in MATLAB.
+The codes for simulation and exploratory data analysis are located in `src/prepare_source_data/sim/simulation.rmd`, with its HTML version available at `simulation.html`. The original data for simulation is situated in `./data/text_data/sim/unrate.txt`, accessible from Data_USEconModel in MATLAB.
 
-For DeepProbCP, the dataset undergoes preprocessing using a window moving strategy, implemented in `./src/prepare_source_data/sim/preprocessing_layer.R`. This aligns with the original codes from Grecov et al. for DeepCPNet. Subsequently, `./src/prepare_source_data/sim/create_tfrecords.py` facilitates the creation of data in the tfrecords format to enhance computational efficiency, a method also employed in the previous codes for DeepCPNet. The customized module "tfrecords_handler" is also available in `./src/models/DeepProbCP`.
+For DeepProbCP, the dataset undergoes preprocessing using a window moving strategy, implemented in `src/prepare_source_data/sim/preprocessing_layer.R`. This aligns with the original codes from Grecov et al. for DeepCPNet. Subsequently, `src/prepare_source_data/sim/create_tfrecords.py` facilitates the creation of data in the tfrecords format to enhance computational efficiency, a method also employed in the previous codes for DeepCPNet. The customized module "tfrecords_handler" is also available in `src/models/DeepProbCP`.
 
 2) **The 911 Emergency Calls Dataset for Montgomery County**
 
 This dataset, sourced from Kaggle, contains records of 911 emergency calls from Montgomery County, Pennsylvania, USA, spanning from December 2015 to July 2020. The raw data file, named "911.csv," is available for download from the following https://www.kaggle.com/mchirico/montcoalert.
 
 **Exploratory Data Analysis:**
-- The exploratory data analysis is documented in `./src/prepare_source_data/calls911/EDA.ipynb`.
+- The exploratory data analysis is documented in `src/prepare_source_data/calls911/EDA.ipynb`.
 
 **Data Wrangling:**
-- To process the data, the script `./src/prepare_source_data/calls911/calls911_wrangling_code.R` is utilized for tasks such as splitting, formatting, and cleaning.
+- To process the data, the script `src/prepare_source_data/calls911/calls911_wrangling_code.R` is utilized for tasks such as splitting, formatting, and cleaning.
 - The resulting output data should ideally be stored in `./data/text_data/calls911/calls3.csv`. However, due to size limitations on GitHub, this file has been removed from the current repository.
 
 **Preprocessing:**
-- Further preprocessing steps are conducted using `./src/prepare_source_data/calls911/calls911_to_forecasting_code.R`.
+- Further preprocessing steps are conducted using `src/prepare_source_data/calls911/calls911_to_forecasting_code.R`.
 - The full monthly dataset is available in `./data/text_data/calls911/calls911_month_full.txt`, while the training dataset spans from December 2015 to December 2019 and is stored in `./data/text_data/calls911/calls911_month_train.txt`. The testing dataset spans from January 2020 to July 2020 and is stored in `./data/text_data/calls911/calls911_month_test.txt`.
-- To address the training and testing datasets in subsequent steps, scripts `./src/prepare_source_data/calls911/adjustOrigTrainDtSet.R` and `./src/prepare_source_data/calls911/adjustOrigTestDtSet.R` are utilized. The resulting output files are named `callsMT2_train.csv` and `callsMT2_test_actual.csv`, serving as the training and testing datasets, respectively.
+- To address the training and testing datasets in subsequent steps, scripts `src/prepare_source_data/calls911/adjustOrigTrainDtSet.R` and `src/prepare_source_data/calls911/adjustOrigTestDtSet.R` are utilized. The resulting output files are named `callsMT2_train.csv` and `callsMT2_test_actual.csv`, serving as the training and testing datasets, respectively.
 
 **For DeepProbCP:**
-- The dataset undergoes preprocessing using a window moving strategy after being transformed to tfrecords by `./src/prepare_source_data/calls911/create_tfrecords.py`.
-- These preprocessing steps are implemented in `./src/prepare_source_data/calls911/mean_stl_train_validation_withoutEXvar.R` and `./src/prepare_source_data/calls911/mean_stl_test_withoutEXvar.R`.
+- The dataset undergoes preprocessing using a window moving strategy after being transformed to tfrecords by `src/prepare_source_data/calls911/create_tfrecords.py`.
+- These preprocessing steps are implemented in `src/prepare_source_data/calls911/mean_stl_train_validation_withoutEXvar.R` and `src/prepare_source_data/calls911/mean_stl_test_withoutEXvar.R`.
 
 **For Other Models:**
-- The script `./src/prepare_source_data/calls911/benchmarks.py` is utilized to convert `calls911_month_full.txt` to a standardized input format, resulting in `./data/text_data/calls911/calls911_benchmarks.csv`.
+- The script `src/prepare_source_data/calls911/benchmarks.py` is utilized to convert `calls911_month_full.txt` to a standardized input format, resulting in `./data/text_data/calls911/calls911_benchmarks.csv`.
 
 ### Training code
 
-To train the model(s) in the paper, run this command:
+To train the model(s) in the paper, for
 
-```train
-python train.py --input-data <path_to_data> --alpha 10 --beta 20
-```
+1) Causal Impact
+Run the codes in src/models/CausalImpact/causalimpact.ipynb
+
+2) TSMixer
+Run the codes in src/models/TSMixer/tsmixer.ipynb
+
+3) DeepProbCP
+Run the codes in src/models/DeepProbCP/DeepProbCP.sh
+
+4) TFT
+The codes in src/models/TSMixer/tft_colab.ipynb should be run in Colab instead, which is more likely to success in installing modules
 
 ### Evaluation code
 
-Does a repository contain a script to calculate the performance of the trained model(s) or run experiments on models?
+There are three parts for evaluation.
+
+1) The sMAPE, MASE and CRPS in the post-treatment period for the control and the treated (if the data is synthetic)
+
+This is achived during the modelling process, and the results are stored in 
+
+2) The average treatment effect on the treated (ATT) in the post-treatment period for the treated and the sMAPE of ATT (if the data is synthetic)
+
+3) Placebo Test
+
 
 ### Pretrained models
 

@@ -299,15 +299,15 @@ if __name__ == '__main__':
     # model = StackingModel(**model_kwargs)
 
     # # delete model if existing
-    # for file in glob.glob("./results/nn_model_results/rnn/"+model_identifier+"_model.pkl"):
+    # for file in glob.glob("./results/DeepProbCP/"+model_identifier+"_model.pkl"):
     #     os.remove(file)
 
     # # save model
-    # with open("./results/nn_model_results/rnn/"+model_identifier+"_model.pkl", "wb") as fout:
+    # with open("./results/DeepProbCP/"+model_identifier+"_model.pkl", "wb") as fout:
     #     pickle.dump(model, fout)
     
     # # # Load the study from the saved file
-    # # with open("./results/nn_model_results/rnn/"+model_identifier+"_model.pkl", "rb") as fin:
+    # # with open("./results/DeepProbCP/"+model_identifier+"_model.pkl", "rb") as fin:
     # #     model = pickle.load(fin)
     
     # # delete hyperparameter configs files if existing
@@ -323,7 +323,7 @@ if __name__ == '__main__':
     # persist_results(optimized_configuration, hyperparameter_tuning_configs.OPTIMIZED_CONFIG_DIRECTORY + '/' + model_identifier + '.txt')
 
     # # # not training again but just read in
-    # # optimized_configuration = read_optimal_hyperparameter_values("./results/nn_model_results/rnn/optimized_configurations/" + model_identifier + ".txt")
+    # # optimized_configuration = read_optimal_hyperparameter_values("./results/DeepProbCP/optimized_configurations/" + model_identifier + ".txt")
     # # print(optimized_configuration)
 
     # # delete the forecast files if existing

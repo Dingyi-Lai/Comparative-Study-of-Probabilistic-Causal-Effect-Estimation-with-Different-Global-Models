@@ -1,0 +1,16 @@
+cell_dimension >>> 16
+
+gaussian_noise_stdev >>> 0.00013104390728009758
+
+l2_regularization >>> 0.00033697966471702334
+
+max_epoch_size >>> 25
+
+max_num_epochs >>> 4
+
+minibatch_size >>> 11
+
+num_hidden_layers >>> 1
+
+random_normal_initializer_stdev >>> 0.0007720585517558528
+

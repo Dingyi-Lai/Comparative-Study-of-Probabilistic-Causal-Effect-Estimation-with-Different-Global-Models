@@ -17,12 +17,12 @@ class model_testing_configs:
     ERRORS_DIRECTORY = './results/errors/'
 
     # RNN related
-    FORECASTS_DIRECTORY = './results/nn_model_results/rnn/forecasts/'
-    ENSEMBLE_FORECASTS_DIRECTORY = './results/nn_model_results/rnn/ensemble_forecasts/'
-    ENSEMBLE_CS_FORECASTS_DIRECTORY = './results/nn_model_results/rnn/ensemble_interpolated_forecasts/'
-    ENSEMBLE_ERRORS_DIRECTORY = './results/nn_model_results/rnn/ensemble_errors/'
-    PROCESSED_ENSEMBLE_FORECASTS_DIRECTORY = './results/nn_model_results/rnn/processed_ensemble_forecasts/'
-    AGGREGATED_ENSEMBLE_ERRORS_DIRECTORY = './results/nn_model_results/rnn/ensemble_errors/aggregate_errors/'
+    FORECASTS_DIRECTORY = './results/DeepProbCP/forecasts/'
+    ENSEMBLE_FORECASTS_DIRECTORY = './results/DeepProbCP/ensemble_forecasts/'
+    ENSEMBLE_CS_FORECASTS_DIRECTORY = './results/DeepProbCP/ensemble_interpolated_forecasts/'
+    ENSEMBLE_ERRORS_DIRECTORY = './results/DeepProbCP/ensemble_errors/'
+    PROCESSED_ENSEMBLE_FORECASTS_DIRECTORY = './results/DeepProbCP/processed_ensemble_forecasts/'
+    AGGREGATED_ENSEMBLE_ERRORS_DIRECTORY = './results/DeepProbCP/ensemble_errors/aggregate_errors/'
 
     # aggregated general errors
     AGGREGATED_ERRORS_DIRECTORY = './results/errors/aggregate_errors/'
@@ -33,7 +33,7 @@ class hyperparameter_tuning_configs:
     SMAC_RUNCOUNT_LIMIT_PER_SEQ = 50
 
     # RNN related
-    OPTIMIZED_CONFIG_DIRECTORY = './results/nn_model_results/rnn/optimized_configurations/'
+    OPTIMIZED_CONFIG_DIRECTORY = './results/DeepProbCP/optimized_configurations/'
 
 class training_data_configs:
     SHUFFLE_BUFFER_SIZE = 1000
