@@ -8,7 +8,8 @@
 
 **2nd Examiner:** Prof. Dr. Sonja Greven
 
-[Insert here a figure explaining your approach or main results]
+![Exploratory Data Analysis for 911 Emergency Call Dataset](https://raw.githubusercontent.com/Dingyi-Lai/master_thesis/main/figures/EDA_911.png)
+
 
 ## Table of Content
 
@@ -158,20 +159,20 @@ The main figures that are used in the thesis and the talk are in `figures`. For 
 └── src
     ├── prepare_source_data                   -- preprocesses data
         ├── calls911
-            ├── `[1]EDA.ipynb`
-            ├── `[2]calls911_wrangling_code.R`
-            ├── `[3]calls911_to_forecasting_code.R`
-            ├── `[4]adjustOrigTestDtSet.R`
-            ├── `[4]adjustOrigTrainDtSet.R`
-            ├── `[5]create_tfrecords.py`
-            ├── `[6]mean_stl_test_withoutEXvar.R`
-            ├── `[6]mean_stl_train_validation_withoutEXvar.R`
-            └── `[7]benchmarks.py`
+            ├── [1]EDA.ipynb
+            ├── [2]calls911_wrangling_code.R
+            ├── [3]calls911_to_forecasting_code.R
+            ├── [4]adjustOrigTestDtSet.R
+            ├── [4]adjustOrigTrainDtSet.R
+            ├── [5]create_tfrecords.py
+            ├── [6]mean_stl_test_withoutEXvar.R
+            ├── [6]mean_stl_train_validation_withoutEXvar.R
+            └── [7]benchmarks.py
         └── sim
-            ├── `[1]simulation.html`
-            ├── `[1]simulation.rmd`
-            ├── `[2]preprocessing_layer.R`
-            ├── `[3]create_tfrecords.py`
+            ├── [1]simulation.html
+            ├── [1]simulation.rmd
+            ├── [2]preprocessing_layer.R
+            ├── [3]create_tfrecords.py
             └── ar_coefficients_generator.R
     ├── model                      -- modeling process
         ├── CausalImpact
@@ -183,7 +184,7 @@ The main figures that are used in the thesis and the talk are in `figures`. For 
             ├── quantile_utils                      -- quantile-related functions for DeepProbCP
             ├── rnn_architectures                      -- main file for model structure, the one with "_p" is for DeepProbCP
             ├── tfrecords_handler                      -- handles the .tfrecords data
-            ├── `[for R]invoke_final_evaluation.py`                      -- original evaluation function from DeepCPNet
+            ├── [for R]invoke_final_evaluation.py                      -- original evaluation function from DeepCPNet
             ├── DeepProbCP.sh                      -- execution scripts for terminal
             ├── ensembling_forecasts.py                      -- the forecasts from the 10 seeds are ensembled by taking the median
             ├── generic_model_handler.py                      -- main function evoked by DeepProbCP.sh
