@@ -10,6 +10,8 @@
 
 ![Exploratory Data Analysis for 911 Emergency Call Dataset](https://raw.githubusercontent.com/Dingyi-Lai/master_thesis/main/figures/EDA_911.png)
 
+![Counterfactual Results for Real-world Data from DeepProbCP](https://raw.githubusercontent.com/Dingyi-Lai/master_thesis/main/figures/911DeepProbCP.png)
+
 
 ## Table of Content
 
