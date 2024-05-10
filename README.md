@@ -52,6 +52,12 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+4. Path Variables
+
+Set the `PYTHONPATH` env variable of the system. Append absolute paths of both the project root directory and the directory of the `src/models/DeepProbCP/cocob_optimizer` into the `PYTHONPATH` for the model DeepProbCP
+
+For R scripts, make sure to set the working directory to the project root folder.
+
 ## Reproducing results
 
 ### Data preprocessing code
@@ -94,16 +100,27 @@ This dataset, sourced from Kaggle, contains records of 911 emergency calls from 
 To train the model(s) in the paper, for
 
 1) Causal Impact
-Run the codes in src/models/CausalImpact/causalimpact.ipynb
+Run the codes in `src/models/CausalImpact/causalimpact.ipynb`
 
 2) TSMixer
-Run the codes in src/models/TSMixer/tsmixer.ipynb
+Run the codes in `src/models/TSMixer/tsmixer.ipynb`
 
 3) DeepProbCP
-Run the codes in src/models/DeepProbCP/DeepProbCP.sh
+Run the codes in `src/models/DeepProbCP/DeepProbCP.sh`
+
+The model expects a number of arguments.
+1. dataset_type - synthetic or real-world dataset
+2. dataset_name - Any unique string for the name of the dataset
+3. contain_zero_values - Whether the dataset contains zero values(0/1)
+4. forecast_horizon - The forecast horizon of the dataset
+5. no_of_series - The number of series of the dataset
+6. optimizer - The type of the optimizer(cocob/adam/adagrad)
+7. seasonality_period - The seasonality period of the time series
+8. address_near_zero_instability - Whether the dataset contains zero values(0/1) - Whether to use a custom SMAPE function to address near zero instability(0/1). Default value is 0
+9. without_stl_decomposition - Whether not to use stl decomposition(0/1). Default is 0
 
 4) TFT
-The codes in src/models/TSMixer/tft_colab.ipynb should be run in Colab instead, which is more likely to success in installing modules
+The codes in `src/models/TSMixer/tft_colab.ipynb` should be run in Colab instead, which is more likely to success in installing modules
 
 ### Evaluation code
 
@@ -111,90 +128,73 @@ There are three parts for evaluation.
 
 1) The sMAPE, MASE and CRPS in the post-treatment period for the control and the treated (if the data is synthetic)
 
-This is achived during the modelling process, and the results are stored in 
+This is achieved during the modelling process, and the results are stored in `results/.../accuracy`
 
 2) The average treatment effect on the treated (ATT) in the post-treatment period for the treated and the sMAPE of ATT (if the data is synthetic)
 
-3) Placebo Test
+This is executed in `src/evaluation/results.ipynb`, and the resultes are in `results/.../tte`
 
+3) Placebo Test
+This is conducted and presented in `src/evaluation/results.ipynb`
 
 ### Pretrained models
 
-Does a repository provide free access to pretrained model weights?
+Pretrained models for DeepProbCP are in `results/calls911/DeepProbCP/pkl` and for TFT are in `results/calls911/TFT/pkl`
 
 ## Results
 
-Does a repository contain a table/plot of main results and a script to reproduce those results?
-
-## Path Variables ##
-
-Set the `PYTHONPATH` env variable of the system. Append absolute paths of both the project root directory and the directory of the `external_packages/cocob_optimizer` into the `PYTHONPATH`  
-
-For R scripts, make sure to set the working directory to the project root folder.
-
-## Execution Instructions ##
-
-Example bash scripts are in the directory `utility_scripts/execution_scripts`. 
-
-#### External Arguments ####
-The model expects a number of arguments.
-1. dataset_name - Any unique string for the name of the dataset
-2. contain_zero_values - Whether the dataset contains zero values(0/1)
-3. address_near_zero_instability - Whether the dataset contains zero values(0/1) - Whether to use a custom SMAPE function to address near zero instability(0/1). Default value is 0
-4. integer_conversion - Whether to convert the final forecasts to integers(0/1). Default is 0
-5. initial_hyperparameter_values_file - The file for the initial hyperparameter range configurations
-6. binary_train_file_train_mode - The tfrecords file for train dataset in the training mode
-7. binary_valid_file_train_mode - The tfrecords file for validation dataset in the training mode
-8. binary_train_file_test_mode - The tfrecords file for train dataset in the testing mode
-9. binary_test_file_test_mode - The tfrecords file for test dataset in the testing mode
-10. txt_test_file - The text file for test dataset
-11. actual_results_file - The text file of the actual results
-12. original_data_file - The text file of the original dataset with all the given data points
-13. cell_type - The cell type of the RNN(LSTM/GRU/RNN). Default is LSTM
-14. input_size - The input size of the moving window. Default is 0 in the case of non moving window format
-15. seasonality_period - The seasonality period of the time series
-16. forecast_horizon - The forecast horizon of the dataset
-17. optimizer - The type of the optimizer(cocob/adam/adagrad)
-18. without_stl_decomposition - Whether not to use stl decomposition(0/1). Default is 0
-19. no_of_series - The number of series of the dataset.
-
-#### Execution Flow ####
-
-##### 1.Invoking the Script: #####
-The first point of invoking the models is the `generic_model_handler.py`. The `generic_model_handler.py` parses the external arguments and identifies the required type of optimizer, cell etc... The actual stacking model is inside the directory `rnn_architectures`. 
-First, the hyperparameter tuning is carried out using the validation errors of the stacking model. Example initial hyperparameter ranges can be found inside the directory `configs/initial_hyperparameter_values`. The found optimal hyperparameter combination is written to a file in the directory `results/nn_model_results/rnn/optimized_configurations`. 
-Then the found optimal hyperparameter combination is used on the respective model to generate the final forecasts. Every model is run on 10 Tensorflow graph seeds (from 1 to 10). The forecasts are written to 10 files inside the directory `results/nn_model_results/rnn/forecasts`.
-
-##### 2.Ensembling Forecasts: #####
-The forecasts from the 10 seeds are ensembled by taking the median. The `utility_scripts/ensembling_forecasts.py` script does this. This script is invoked implicitly inside the `generic_model_handler.py`. The ensembled forecasts are written to the directory `results/nn_model_results/rnn/ensemble_forecasts`. 
-
-##### 3.Error Calculation: #####
-The SMAPE and MASE errors are calculated per each series for each model using the error calculation scripts in the directory `error_calculator`. The name of the script is `final_evaluation.R`. This script is also implicitly invoked inside the `generic_model_handler.py`. The script perform the post processing of the forecasts to reverse initial preprocessing. The errors of the ensembles are written to the directory `results/nn_model_results/rnn/ensemble_errors`. And the processed ensembled forecasts after the post processing are written to the directory `results/nn_model_results/rnn/processed_ensemble_forecasts`. 
-
-##### 4.Benchmark Forecasts - ARIMA and ETS: #####
-Inside the directory `stastical_bench_methods` there are the Arima and ETS forecasts codes files performed for both datasets. The results of these forecasting are written to the directory `results/arima_forecasts/` or `results/ets_forecasts/`. Inside these directories we also have examples for the scritps used to calculate the errors.
-
-#### Support code scripts to build the graphs, to perform the statistical significance tests, and to execute STL exploratory analysis for ALI variable:  ####
-Inside the directory `support_code_scripts` there are 3 support code files:
-
-* `graphs_and_meanTests_NASSdataset.R` --> code to adjust the data for plotting the Figure 2A concerning to the Dataset 1
-* `graphs_and_meanTests_MONTdataset.R` --> code to adjust the data for plotting the Figure 2B concerning to the Dataset 2
-* `licenses_STL_analysis_code.R` --> code to perfom the STL decomposition exploratory analysis for the ALI variable, and to plot Figure 1.
-# master_thesis
+The main figures that are used in the thesis and the talk are in `figures`. For example, EDA_911.png is generated via `src/prepare_source_data/calls911/EDA.ipynb`. The others are mostly built in `src/evaluation/results.ipynb`. The numbers in tables are in `results`
 
 ## Project structure
-
-(Here is an example from SMART_HOME_N_ENERGY, [Appliance Level Load Prediction](https://github.com/Humboldt-WI/dissertations/tree/main/SMART_HOME_N_ENERGY/Appliance%20Level%20Load%20Prediction) dissertation)
 
 ```bash
 ├── README.md
 ├── requirements.txt                                -- required libraries
-├── data                                            -- stores csv file 
-├── plots                                           -- stores image files
+├── data                                            -- stores txt and csv file 
+├── figures                                           -- stores image files
+├── results                                       -- all results regarding predicted value, performance metric like sMAPE, MASE and CRPS, intermediate results and pretrained model and optimized hyperparameters   
+    ├── calls911
+    └── sim
 └── src
-    ├── prepare_source_data.ipynb                   -- preprocesses data
-    ├── data_preparation.ipynb                      -- preparing datasets
-    ├── model_tuning.ipynb                          -- tuning functions
-    └── run_experiment.ipynb                        -- run experiments 
-    └── plots                                       -- plotting functions                 
+    ├── prepare_source_data                   -- preprocesses data
+        ├── calls911
+            ├── `[1]EDA.ipynb`
+            ├── `[2]calls911_wrangling_code.R`
+            ├── `[3]calls911_to_forecasting_code.R`
+            ├── `[4]adjustOrigTestDtSet.R`
+            ├── `[4]adjustOrigTrainDtSet.R`
+            ├── `[5]create_tfrecords.py`
+            ├── `[6]mean_stl_test_withoutEXvar.R`
+            ├── `[6]mean_stl_train_validation_withoutEXvar.R`
+            └── `[7]benchmarks.py`
+        └── sim
+            ├── `[1]simulation.html`
+            ├── `[1]simulation.rmd`
+            ├── `[2]preprocessing_layer.R`
+            ├── `[3]create_tfrecords.py`
+            └── ar_coefficients_generator.R
+    ├── model                      -- modeling process
+        ├── CausalImpact
+            └── causalimpact.ipynb
+        ├── DeepProbCP
+            ├── cocob_optimizer                      -- optimizer for DeepProbCP
+            ├── configs                      -- configurations for DeepProbCP
+            ├── error_calculator                      -- evaluation functions for DeepProbCP
+            ├── quantile_utils                      -- quantile-related functions for DeepProbCP
+            ├── rnn_architectures                      -- main file for model structure, the one with "_p" is for DeepProbCP
+            ├── tfrecords_handler                      -- handles the .tfrecords data
+            ├── `[for R]invoke_final_evaluation.py`                      -- original evaluation function from DeepCPNet
+            ├── DeepProbCP.sh                      -- execution scripts for terminal
+            ├── ensembling_forecasts.py                      -- the forecasts from the 10 seeds are ensembled by taking the median
+            ├── generic_model_handler.py                      -- main function evoked by DeepProbCP.sh
+            ├── hyperparameter_config_reader.py                      -- read the hyperparameter
+            ├── peephole_lstm_cell.py                      -- peephole structure for lstm cell
+            └── persist_optimized_config_results.py                      -- configuration-related
+        ├── TFT
+            └── tft_colab.ipynb
+        └── TSMixer
+            ├── tsmixer_load                      -- data_loader for tsmixer to implement window moving strategy
+            └── tft_colab.ipynb
+    └── evaluation                          -- evaluate in terms of causal impact and placebo test
+        └── results.ipynb                        -- a giant but comprehensive notebook               
 ```
