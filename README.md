@@ -8,10 +8,31 @@
 
 **2nd Examiner:** Prof. Dr. Sonja Greven
 
+**Synthetic Dataset:**
+
+![Simulated Time Series Based on Unemployment Rate Data](https://raw.githubusercontent.com/Dingyi-Lai/master_thesis/main/figures/EDA_sim.png)
+
+![Quantile Distribution for the Simulated Treated Units](https://raw.githubusercontent.com/Dingyi-Lai/master_thesis/main/figures/simQuantile.png)
+
+![Performance Metrics (sMAPE and MASE) for Different Models](https://raw.githubusercontent.com/Dingyi-Lai/master_thesis/main/figures/sMAPE_MASE.png)
+
+![Performance Metrics (CRPS) for Different Models and Placebo Test](https://raw.githubusercontent.com/Dingyi-Lai/master_thesis/main/figures/CRPS_PT.png)
+
+![ATT (q > 0.9) for the Treated and its Evaluation Based on sMAPE](https://raw.githubusercontent.com/Dingyi-Lai/master_thesis/main/figures/ATT_sMAPE.png)
+
+**The 911 Emergency Calls Dataset for Montgomery County**
+
 ![Exploratory Data Analysis for 911 Emergency Call Dataset](https://raw.githubusercontent.com/Dingyi-Lai/master_thesis/main/figures/EDA_911.png)
 
 ![Counterfactual Results for Real-world Data from DeepProbCP](https://raw.githubusercontent.com/Dingyi-Lai/master_thesis/main/figures/911DeepProbCP.png)
 
+![No Quantile-crossing Issue in Predicted Control Units for DeepProbCP](https://raw.githubusercontent.com/Dingyi-Lai/master_thesis/main/figures/911controls.png)
+
+![Quantile-crossing issue in Predicted Treated Units for DeepProbCP](https://raw.githubusercontent.com/Dingyi-Lai/master_thesis/main/figures/911treated.png)
+
+![Error Results Only for the Control Units and the Placebo Test](https://raw.githubusercontent.com/Dingyi-Lai/master_thesis/main/figures/911Controls.png)
+
+![Estimation of the Average Treatment Effect on the Treated Units per Quantile](https://raw.githubusercontent.com/Dingyi-Lai/master_thesis/main/figures/911ATT.png)
 
 ## Table of Content
 
